@@ -5,10 +5,12 @@ import { Play, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 import { getSessions, getTracks } from '../lib/storage';
 import { useTimer } from '../context/TimerContext';
 import ThemeToggle from '../components/ThemeToggle';
+import ProfileModal from '../components/ProfileModal';
 
 const Dashboard = () => {
   const [thisWeekMins, setThisWeekMins] = useState(0);
   const [dueGoals, setDueGoals] = useState([]);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { openTimerModal } = useTimer();
 
   useEffect(() => {
@@ -86,7 +88,22 @@ const Dashboard = () => {
           <h1 className="page-title">Good Morning, Amay! 🌤️</h1>
           <p className="page-subtitle">Ready to glow up your skills today?</p>
         </div>
-        <ThemeToggle />
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <ThemeToggle />
+          <motion.div 
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsProfileOpen(true)}
+            style={{
+              width: '40px', height: '40px', borderRadius: '50%',
+              backgroundColor: 'var(--accent-primary)', color: 'white',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontWeight: 800, fontSize: '1.2rem',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+          >
+            A
+          </motion.div>
+        </div>
       </header>
 
       {/* Summary Card */}
@@ -109,6 +126,9 @@ const Dashboard = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {dueGoals.map((g, idx) => (
               <motion.div 
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 key={`${g.id}-${idx}`}
                 className="card"
                 style={{ 
@@ -148,6 +168,7 @@ const Dashboard = () => {
         </button>
       </div>
 
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </motion.div>
   );
 };

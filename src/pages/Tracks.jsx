@@ -51,6 +51,7 @@ const Tracks = () => {
 
         {tracks.map((track) => (
           <motion.div 
+            layout
             key={track.id}
             className="card" 
             whileHover={{ scale: 1.02 }}

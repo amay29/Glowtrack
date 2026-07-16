@@ -6,6 +6,7 @@ import { getTracks, updateTrack, deleteTrack, archiveTrack } from '../lib/storag
 import { useTimer } from '../context/TimerContext';
 import { playPopSound, playChimeSound } from '../lib/audio';
 import EditTrackModal from '../components/EditTrackModal';
+import confetti from 'canvas-confetti';
 
 const TrackDetail = () => {
   const { id } = useParams();
@@ -225,6 +226,21 @@ const TrackDetail = () => {
     }
   };
 
+  const handleCompleteTrack = () => {
+    if (track) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#7ea8f8', '#8be0b6', '#ffa8a8', '#ffe08a']
+      });
+      playChimeSound();
+      const updatedTrack = { ...track, isCompleted: true, completedAt: new Date().toISOString() };
+      updateTrack(updatedTrack);
+      setTrack(updatedTrack);
+    }
+  };
+
   const handleMoveToHistory = () => {
     if (track) {
       playChimeSound();
@@ -416,7 +432,7 @@ const TrackDetail = () => {
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {track.goals && track.goals.map((goal) => (
-          <div key={goal.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <motion.div layout key={goal.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             
             {/* LEVEL 1: Main Goal */}
             <motion.div 
@@ -487,8 +503,9 @@ const TrackDetail = () => {
             {goal.subGoals && goal.subGoals.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '1.5rem' }}>
                 {goal.subGoals.map((sg) => (
-                  <div key={sg.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <motion.div layout key={sg.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <motion.div 
+                      layout
                       style={{ 
                         padding: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', 
                         opacity: sg.completed ? 0.6 : 1, backgroundColor: sg.completed ? 'transparent' : 'var(--bg-secondary)',
@@ -551,6 +568,7 @@ const TrackDetail = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '2rem' }}>
                         {sg.subGoals.map((ssg) => (
                           <motion.div 
+                            layout
                             key={ssg.id}
                             style={{ 
                               padding: '0.375rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', 
