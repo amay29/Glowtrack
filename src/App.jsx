@@ -6,6 +6,7 @@ import Tracks from './pages/Tracks';
 import TrackDetail from './pages/TrackDetail';
 import Notes from './pages/Notes';
 import History from './pages/History';
+import Stats from './pages/Stats';
 import { initDemoData } from './lib/storage';
 import './App.css';
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="/tracks" element={<Tracks />} />
             <Route path="/track/:id" element={<TrackDetail />} />
             <Route path="/history" element={<History />} />
+            <Route path="/stats" element={<Stats />} />
             <Route path="/notes" element={<Notes />} />
           </Routes>
         </main>

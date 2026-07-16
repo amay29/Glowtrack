@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Flame, Clock, TrendingUp, TrendingDown } from 'lucide-react';
-import { getUserStats, getSessions } from '../lib/storage';
+import { Play, Clock } from 'lucide-react';
+import { getSessions } from '../lib/storage';
 import SessionLogModal from '../components/SessionLogModal';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({ currentStreak: 0, lastStudyDate: null });
-  const [trend, setTrend] = useState({ thisWeekMins: 0, diff: 0, isUp: true });
+  const [thisWeekMins, setThisWeekMins] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -14,11 +13,6 @@ const Dashboard = () => {
   }, []);
 
   const loadData = () => {
-    setStats(getUserStats());
-    calculateTrend();
-  };
-
-  const calculateTrend = () => {
     const sessions = getSessions();
     const now = new Date();
     
@@ -28,28 +22,15 @@ const Dashboard = () => {
     thisWeekStart.setDate(thisWeekStart.getDate() - day + 1);
     thisWeekStart.setHours(0, 0, 0, 0);
 
-    // Calculate start of last week
-    const lastWeekStart = new Date(thisWeekStart);
-    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-
-    let thisWeekMins = 0;
-    let lastWeekMins = 0;
-
+    let mins = 0;
     sessions.forEach(s => {
       const d = new Date(s.date);
       if (d >= thisWeekStart) {
-        thisWeekMins += s.durationMinutes;
-      } else if (d >= lastWeekStart && d < thisWeekStart) {
-        lastWeekMins += s.durationMinutes;
+        mins += s.durationMinutes;
       }
     });
 
-    const diff = thisWeekMins - lastWeekMins;
-    setTrend({
-      thisWeekMins,
-      diff: Math.abs(diff),
-      isUp: diff >= 0
-    });
+    setThisWeekMins(mins);
   };
 
   const formatMinutes = (totalMins) => {
@@ -68,42 +49,22 @@ const Dashboard = () => {
       transition={{ duration: 0.3 }}
       style={{ paddingBottom: '2rem' }}
     >
-      <header className="page-header" style={{ marginBottom: '2rem' }}>
+      <header className="page-header" style={{ marginBottom: '2.5rem' }}>
         <div>
           <h1 className="page-title">Good Morning, Amay! 🌤️</h1>
           <p className="page-subtitle">Ready to glow up your skills today?</p>
         </div>
       </header>
 
-      {/* Summary Cards */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-        <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ color: 'var(--warning-color)', marginBottom: '0.25rem' }}>
-            <Flame size={28} fill="currentColor" />
-          </div>
-          <h3 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{stats.currentStreak}</h3>
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Day Streak</span>
+      {/* Summary Card */}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2.5rem 1rem', marginBottom: '2.5rem', boxShadow: '0 10px 30px rgba(126, 168, 248, 0.15)', borderColor: 'var(--accent-primary)' }}>
+        <div style={{ color: 'var(--accent-primary)', marginBottom: '0.75rem', backgroundColor: 'var(--bg-primary)', padding: '1rem', borderRadius: '50%' }}>
+          <Clock size={36} />
         </div>
-        
-        <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ color: 'var(--accent-primary)', marginBottom: '0.25rem' }}>
-            <Clock size={28} />
-          </div>
-          <h3 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{formatMinutes(trend.thisWeekMins)}</h3>
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>This Week</span>
-          
-          {/* Trend Indicator */}
-          <div style={{ 
-            display: 'flex', alignItems: 'center', gap: '0.25rem', 
-            fontSize: '0.75rem', fontWeight: 700,
-            color: trend.isUp ? 'var(--success-color)' : 'var(--error-color)',
-            backgroundColor: trend.isUp ? 'rgba(52, 211, 153, 0.1)' : 'rgba(248, 113, 113, 0.1)',
-            padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-full)'
-          }}>
-            {trend.isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            <span>{formatMinutes(trend.diff)} vs last week</span>
-          </div>
-        </div>
+        <h3 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>
+          {formatMinutes(thisWeekMins)}
+        </h3>
+        <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Total Time This Week</span>
       </div>
 
       {/* Main Focus / Quick Log CTA */}

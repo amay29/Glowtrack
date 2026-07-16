@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, List, NotebookPen, History } from 'lucide-react';
+import { Home, List, NotebookPen, History, PieChart } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const BottomNav = () => {
@@ -44,6 +44,20 @@ const BottomNav = () => {
               <History size={22} strokeWidth={isActive ? 2.5 : 2} />
             </motion.div>
             <span>History</span>
+          </>
+        )}
+      </NavLink>
+
+      <NavLink 
+        to="/stats" 
+        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+      >
+        {({ isActive }) => (
+          <>
+            <motion.div whileTap={{ scale: 0.8 }} animate={{ y: isActive ? -2 : 0 }}>
+              <PieChart size={22} strokeWidth={isActive ? 2.5 : 2} />
+            </motion.div>
+            <span>Stats</span>
           </>
         )}
       </NavLink>
