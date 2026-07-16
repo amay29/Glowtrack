@@ -252,14 +252,15 @@ const TrackDetail = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const date = new Date(deadline);
-    date.setHours(0, 0, 0, 0);
+    const dateOnly = new Date(date);
+    dateOnly.setHours(0, 0, 0, 0);
     
     let color = 'var(--text-secondary)';
     let bg = 'var(--bg-tertiary)';
-    if (date.getTime() === today.getTime()) {
+    if (dateOnly.getTime() === today.getTime()) {
       color = '#db2777'; // Pinkish
       bg = '#fce7f3';
-    } else if (date < today) {
+    } else if (dateOnly < today) {
       color = 'var(--error-color)';
       bg = 'rgba(248, 113, 113, 0.1)';
     }
@@ -270,7 +271,7 @@ const TrackDetail = () => {
         fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 'var(--radius-sm)', 
         backgroundColor: bg, color: color, fontWeight: 800
       }}>
-        <Calendar size={10} /> {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+        <Calendar size={10} /> {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
       </span>
     );
   };
@@ -457,7 +458,7 @@ const TrackDetail = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <div style={{ position: 'relative' }}>
                     <input 
-                      type="date"
+                      type="datetime-local"
                       value={goal.deadline || ''}
                       onChange={(e) => handleSetDeadline(goal.id, e.target.value)}
                       style={{
@@ -523,7 +524,7 @@ const TrackDetail = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <div style={{ position: 'relative' }}>
                             <input 
-                              type="date"
+                              type="datetime-local"
                               value={sg.deadline || ''}
                               onChange={(e) => handleSetDeadline(sg.id, e.target.value)}
                               style={{
@@ -589,7 +590,7 @@ const TrackDetail = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <div style={{ position: 'relative' }}>
                                   <input 
-                                    type="date"
+                                    type="datetime-local"
                                     value={ssg.deadline || ''}
                                     onChange={(e) => handleSetDeadline(ssg.id, e.target.value)}
                                     style={{

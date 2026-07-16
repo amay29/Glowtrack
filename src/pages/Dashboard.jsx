@@ -118,7 +118,7 @@ const Dashboard = () => {
                   <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{g.title}</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                     {g.trackName} • <span style={{ color: g.isOverdue ? 'var(--error-color)' : '#db2777' }}>
-                      {g.isOverdue ? 'Overdue' : 'Today'}
+                      {g.isOverdue ? 'Overdue' : `Today, ${new Date(g.deadline).toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'})}`}
                     </span>
                   </span>
                 </div>

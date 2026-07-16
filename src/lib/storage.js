@@ -4,6 +4,7 @@ const KEYS = {
   SESSIONS: 'glowtrack_sessions',
   NOTES: 'glowtrack_notes',
   USER_STATS: 'glowtrack_user_stats',
+  NOTIFIED_GOALS: 'glowtrack_notified_goals',
 };
 
 // Generic get/set
@@ -197,6 +198,15 @@ const updateStreak = () => {
   }
   
   saveUserStats(stats);
+};
+
+// Notified Goals (for local PWA notifications)
+export const getNotifiedGoals = () => getItem(KEYS.NOTIFIED_GOALS, []);
+export const addNotifiedGoal = (goalId) => {
+  const notified = getNotifiedGoals();
+  if (!notified.includes(goalId)) {
+    setItem(KEYS.NOTIFIED_GOALS, [...notified, goalId]);
+  }
 };
 
 // Initial Demo Data
