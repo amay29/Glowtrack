@@ -133,12 +133,13 @@ const TrackDetail = () => {
       {/* Completion Banner */}
       {isAllGoalsCompleted && !track.isCompleted && (
         <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
+          initial={{ scale: 0.9, opacity: 0, y: 10 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
           className="card"
           style={{ 
             backgroundColor: 'var(--bg-tertiary)', 
             borderColor: 'var(--accent-primary)',
+            boxShadow: '0 0 20px rgba(126, 168, 248, 0.3)',
             textAlign: 'center',
             marginBottom: '1.5rem',
             display: 'flex',
@@ -148,10 +149,14 @@ const TrackDetail = () => {
             padding: '1.5rem'
           }}
         >
-          <div style={{ color: 'var(--accent-primary)', display: 'inline-flex', gap: '0.25rem' }}>
-            <Sparkles size={24} />
+          <div style={{ color: 'var(--accent-primary)', display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+            <motion.div animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
+              <Sparkles size={24} />
+            </motion.div>
             <h3 style={{ fontWeight: 800 }}>Track Completed!</h3>
-            <Sparkles size={24} />
+            <motion.div animate={{ rotate: [0, -15, 15, 0], scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2, delay: 0.5 }}>
+              <Sparkles size={24} />
+            </motion.div>
           </div>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
             Congratulations! You've checked off all the goals in this track.

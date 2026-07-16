@@ -66,7 +66,7 @@ export const deleteTrack = (id) => {
 
 export const archiveTrack = (id) => {
   const tracks = getTracks();
-  const newTracks = tracks.map(t => t.id === id ? { ...t, isCompleted: true } : t);
+  const newTracks = tracks.map(t => t.id === id ? { ...t, isCompleted: true, completedAt: new Date().toISOString() } : t);
   saveTracks(newTracks);
 };
 

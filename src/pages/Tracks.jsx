@@ -17,6 +17,8 @@ const Tracks = () => {
 
   const handleAddTrack = (newTrack) => {
     setTracks([newTrack, ...tracks]);
+    setIsAddModalOpen(false);
+    navigate(`/track/${newTrack.id}`);
   };
 
   return (

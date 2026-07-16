@@ -80,7 +80,10 @@ const History = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
               <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Calendar size={14} /> Completed
+                <Calendar size={14} /> 
+                {track.completedAt 
+                  ? new Date(track.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                  : 'Completed'}
               </span>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
