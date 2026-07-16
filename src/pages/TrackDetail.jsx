@@ -648,7 +648,7 @@ const TrackDetail = () => {
                         </button>
                       </form>
                     )}
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
@@ -677,7 +677,7 @@ const TrackDetail = () => {
                 </button>
               </form>
             )}
-          </div>
+          </motion.div>
         ))}
 
         {!hasGoals && (
