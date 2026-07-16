@@ -153,20 +153,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Main Focus / Quick Log CTA */}
-      <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem', backgroundColor: 'var(--bg-secondary)', borderStyle: 'dashed' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>Keep the momentum going!</h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-          Log a quick session to build your habit.
-        </p>
-        <button 
-          className="btn-primary" 
-          onClick={() => openTimerModal(null)}
-          style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', justifyContent: 'center' }}
-        >
-          <Play size={20} fill="currentColor" /> Log Session
-        </button>
-      </div>
 
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </motion.div>

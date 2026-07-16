@@ -1,12 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Check, Edit2, Trash2, Plus, Sparkles, CornerDownRight, Clock, Calendar } from 'lucide-react';
+import { ChevronLeft, Check, Edit2, Trash2, Plus, Sparkles, CornerDownRight, Clock, Calendar, Image as ImageIcon, X } from 'lucide-react';
 import { getTracks, updateTrack, deleteTrack, archiveTrack } from '../lib/storage';
 import { useTimer } from '../context/TimerContext';
 import { playPopSound, playChimeSound } from '../lib/audio';
 import EditTrackModal from '../components/EditTrackModal';
+import ImageModal from '../components/ImageModal';
 import confetti from 'canvas-confetti';
+
+const compressImage = (file, maxWidth = 800) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ratio = maxWidth / img.width;
+        const width = img.width > maxWidth ? maxWidth : img.width;
+        const height = img.width > maxWidth ? img.height * ratio : img.height;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
+      };
+    };
+  });
+};
 
 const TrackDetail = () => {
   const { id } = useParams();
@@ -22,6 +45,10 @@ const TrackDetail = () => {
   
   const [addingSubGoalFor, setAddingSubGoalFor] = useState(null); // stores { goalId, subGoalId } or just goalId string
   const [newSubGoalTitle, setNewSubGoalTitle] = useState('');
+  
+  const [viewingImage, setViewingImage] = useState(null); // { url, goalId }
+  const fileInputRef = React.useRef(null);
+  const [uploadingFor, setUploadingFor] = useState(null); // target goalId
 
   useEffect(() => {
     loadTrack();
@@ -219,6 +246,46 @@ const TrackDetail = () => {
     updateTrackData(updateDeep(track.goals));
   };
 
+  const handleSetImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingFor || !track) return;
+    
+    const compressedBase64 = await compressImage(file);
+    
+    const updateDeep = (list) => {
+      return list.map(item => {
+        if (item.id === uploadingFor) {
+          return { ...item, image: compressedBase64 };
+        }
+        if (item.subGoals) {
+          return { ...item, subGoals: updateDeep(item.subGoals) };
+        }
+        return item;
+      });
+    };
+    updateTrackData(updateDeep(track.goals));
+    setUploadingFor(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemoveImage = (goalId) => {
+    if (!track) return;
+    const updateDeep = (list) => {
+      return list.map(item => {
+        if (item.id === goalId) {
+          const { image, ...rest } = item;
+          return rest;
+        }
+        if (item.subGoals) {
+          return { ...item, subGoals: updateDeep(item.subGoals) };
+        }
+        return item;
+      });
+    };
+    updateTrackData(updateDeep(track.goals));
+    setViewingImage(null);
+  };
+
   const handleDeleteTrack = () => {
     if (track) {
       deleteTrack(track.id);
@@ -267,32 +334,50 @@ const TrackDetail = () => {
     );
   };
 
-  const formatDeadlineBadge = (deadline) => {
-    if (!deadline) return null;
+  const formatDeadlineBadge = (deadline, goalId) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const date = new Date(deadline);
-    const dateOnly = new Date(date);
-    dateOnly.setHours(0, 0, 0, 0);
     
-    let color = 'var(--text-secondary)';
+    let text = '+ Set Deadline';
+    let color = 'var(--text-muted)';
     let bg = 'var(--bg-tertiary)';
-    if (dateOnly.getTime() === today.getTime()) {
-      color = '#db2777'; // Pinkish
-      bg = '#fce7f3';
-    } else if (dateOnly < today) {
-      color = 'var(--error-color)';
-      bg = 'rgba(248, 113, 113, 0.1)';
+
+    if (deadline) {
+      const date = new Date(deadline);
+      const dateOnly = new Date(date);
+      dateOnly.setHours(0, 0, 0, 0);
+      
+      color = 'var(--text-secondary)';
+      if (dateOnly.getTime() === today.getTime()) {
+        color = '#db2777'; // Pinkish
+        bg = '#fce7f3';
+      } else if (dateOnly < today) {
+        color = 'var(--error-color)';
+        bg = 'rgba(248, 113, 113, 0.1)';
+      }
+      text = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     return (
-      <span style={{ 
+      <label onClick={(e) => e.stopPropagation()} style={{ 
         display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
         fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 'var(--radius-sm)', 
-        backgroundColor: bg, color: color, fontWeight: 800
+        backgroundColor: bg, color: color, fontWeight: 800, cursor: track?.isCompleted ? 'default' : 'pointer',
+        position: 'relative', overflow: 'hidden'
       }}>
-        <Calendar size={10} /> {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-      </span>
+        <Calendar size={10} /> {text}
+        {!track?.isCompleted && (
+          <input 
+            type="datetime-local"
+            value={deadline || ''}
+            onChange={(e) => handleSetDeadline(goalId, e.target.value)}
+            style={{
+              position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+              opacity: 0, cursor: 'pointer'
+            }}
+          />
+        )}
+      </label>
     );
   };
 
@@ -456,36 +541,42 @@ const TrackDetail = () => {
                 {goal.completed && <Check size={12} color="white" strokeWidth={3} />}
               </div>
               
-              <span 
-                onClick={() => openLogModalFor(goal.id, goal.title)}
-                style={{ 
-                  flex: 1, fontWeight: 700, fontSize: '0.95rem',
-                  textDecoration: goal.completed ? 'line-through' : 'none',
-                  color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
-                  cursor: track.isCompleted ? 'default' : 'pointer'
-                }}>
-                {goal.title}
-                {formatTimeBadge(goal.timeSpent)}
-                {formatDeadlineBadge(goal.deadline)}
-                {goal.subGoals && goal.subGoals.length > 0 && (
-                  <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 'var(--radius-sm)', backgroundColor: goal.completed ? 'var(--success-color)' : 'var(--bg-primary)', color: goal.completed ? 'white' : 'var(--text-secondary)', fontWeight: 800 }}>
-                    {goal.completed ? 'Completed' : `${goal.subGoals.filter(sg => sg.completed).length}/${goal.subGoals.length}`}
-                  </span>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <span 
+                  onClick={() => openLogModalFor(goal.id, goal.title)}
+                  style={{ 
+                    fontWeight: 700, fontSize: '0.95rem',
+                    textDecoration: goal.completed ? 'line-through' : 'none',
+                    color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
+                    cursor: track.isCompleted ? 'default' : 'pointer'
+                  }}>
+                  {goal.title}
+                  {formatTimeBadge(goal.timeSpent)}
+                  {formatDeadlineBadge(goal.deadline, goal.id)}
+                  {goal.subGoals && goal.subGoals.length > 0 && (
+                    <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 'var(--radius-sm)', backgroundColor: goal.completed ? 'var(--success-color)' : 'var(--bg-primary)', color: goal.completed ? 'white' : 'var(--text-secondary)', fontWeight: 800 }}>
+                      {goal.completed ? 'Completed' : `${goal.subGoals.filter(sg => sg.completed).length}/${goal.subGoals.length}`}
+                    </span>
+                  )}
+                </span>
+                
+                {goal.image && (
+                  <div style={{ position: 'relative', width: 'fit-content' }}>
+                    <img src={goal.image} alt="attachment" onClick={() => setViewingImage({ url: goal.image, goalId: goal.id })} style={{ height: '60px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', border: '1px solid var(--border-color)', objectFit: 'cover' }} />
+                    {!track.isCompleted && (
+                      <button onClick={(e) => { e.stopPropagation(); handleRemoveImage(goal.id); }} style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: 'var(--error-color)', color: 'white', borderRadius: '50%', padding: '2px', zIndex: 10 }}>
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
                 )}
-              </span>
+              </div>
 
               {!track.isCompleted && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input 
-                    type="datetime-local"
-                    value={goal.deadline || ''}
-                    onChange={(e) => handleSetDeadline(goal.id, e.target.value)}
-                    style={{
-                      padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
-                      color: 'var(--text-secondary)', fontSize: '0.75rem', outline: 'none'
-                    }}
-                  />
+                  <button onClick={() => { setUploadingFor(goal.id); fileInputRef.current?.click(); }} style={{ color: 'var(--text-muted)', padding: '0.25rem', zIndex: 3, position: 'relative' }}>
+                    <ImageIcon size={16} />
+                  </button>
                   <button 
                     onClick={() => setAddingSubGoalFor(addingSubGoalFor === goal.id ? null : goal.id)}
                     style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === goal.id ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)', zIndex: 3, position: 'relative' }}
@@ -526,30 +617,36 @@ const TrackDetail = () => {
                         {sg.completed && <Check size={10} color="white" strokeWidth={3} />}
                       </div>
                       
-                      <span 
-                        onClick={() => openLogModalFor(sg.id, sg.title)}
-                        style={{ 
-                          flex: 1, fontWeight: 600, fontSize: '0.875rem',
-                          textDecoration: sg.completed ? 'line-through' : 'none', color: 'var(--text-primary)',
-                          display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: track.isCompleted ? 'default' : 'pointer'
-                        }}>
-                        {sg.title}
-                        {formatTimeBadge(sg.timeSpent)}
-                        {formatDeadlineBadge(sg.deadline)}
-                      </span>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <span 
+                          onClick={() => openLogModalFor(sg.id, sg.title)}
+                          style={{ 
+                            fontWeight: 600, fontSize: '0.875rem',
+                            textDecoration: sg.completed ? 'line-through' : 'none', color: 'var(--text-primary)',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: track.isCompleted ? 'default' : 'pointer'
+                          }}>
+                          {sg.title}
+                          {formatTimeBadge(sg.timeSpent)}
+                          {formatDeadlineBadge(sg.deadline, sg.id)}
+                        </span>
+                        
+                        {sg.image && (
+                          <div style={{ position: 'relative', width: 'fit-content' }}>
+                            <img src={sg.image} alt="attachment" onClick={() => setViewingImage({ url: sg.image, goalId: sg.id })} style={{ height: '50px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', border: '1px solid var(--border-color)', objectFit: 'cover' }} />
+                            {!track.isCompleted && (
+                              <button onClick={(e) => { e.stopPropagation(); handleRemoveImage(sg.id); }} style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: 'var(--error-color)', color: 'white', borderRadius: '50%', padding: '2px', zIndex: 10 }}>
+                                <X size={10} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                       {!track.isCompleted && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <input 
-                            type="datetime-local"
-                            value={sg.deadline || ''}
-                            onChange={(e) => handleSetDeadline(sg.id, e.target.value)}
-                            style={{
-                              padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
-                              border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
-                              color: 'var(--text-secondary)', fontSize: '0.75rem', outline: 'none'
-                            }}
-                          />
+                          <button onClick={() => { setUploadingFor(sg.id); fileInputRef.current?.click(); }} style={{ color: 'var(--text-muted)', padding: '0.25rem', zIndex: 3, position: 'relative' }}>
+                            <ImageIcon size={14} />
+                          </button>
                           <button 
                             onClick={() => setAddingSubGoalFor(addingSubGoalFor === `${goal.id}-${sg.id}` ? null : `${goal.id}-${sg.id}`)}
                             style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === `${goal.id}-${sg.id}` ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)', zIndex: 3, position: 'relative' }}
@@ -590,30 +687,36 @@ const TrackDetail = () => {
                               {ssg.completed && <Check size={10} color="white" strokeWidth={3} />}
                             </div>
                             
-                            <span 
-                              onClick={() => openLogModalFor(ssg.id, ssg.title)}
-                              style={{ 
-                                flex: 1, fontWeight: 500, fontSize: '0.8125rem',
-                                textDecoration: ssg.completed ? 'line-through' : 'none', color: 'var(--text-secondary)',
-                                display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: track.isCompleted ? 'default' : 'pointer'
-                              }}>
-                              {ssg.title}
-                              {formatTimeBadge(ssg.timeSpent)}
-                              {formatDeadlineBadge(ssg.deadline)}
-                            </span>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <span 
+                                onClick={() => openLogModalFor(ssg.id, ssg.title)}
+                                style={{ 
+                                  fontWeight: 500, fontSize: '0.8125rem',
+                                  textDecoration: ssg.completed ? 'line-through' : 'none', color: 'var(--text-secondary)',
+                                  display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: track.isCompleted ? 'default' : 'pointer'
+                                }}>
+                                {ssg.title}
+                                {formatTimeBadge(ssg.timeSpent)}
+                                {formatDeadlineBadge(ssg.deadline, ssg.id)}
+                              </span>
+
+                              {ssg.image && (
+                                <div style={{ position: 'relative', width: 'fit-content' }}>
+                                  <img src={ssg.image} alt="attachment" onClick={() => setViewingImage({ url: ssg.image, goalId: ssg.id })} style={{ height: '40px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', border: '1px solid var(--border-color)', objectFit: 'cover' }} />
+                                  {!track.isCompleted && (
+                                    <button onClick={(e) => { e.stopPropagation(); handleRemoveImage(ssg.id); }} style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: 'var(--error-color)', color: 'white', borderRadius: '50%', padding: '2px', zIndex: 10 }}>
+                                      <X size={10} />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
 
                             {!track.isCompleted && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <input 
-                                  type="datetime-local"
-                                  value={ssg.deadline || ''}
-                                  onChange={(e) => handleSetDeadline(ssg.id, e.target.value)}
-                                  style={{
-                                    padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
-                                    color: 'var(--text-secondary)', fontSize: '0.75rem', outline: 'none'
-                                  }}
-                                />
+                                <button onClick={() => { setUploadingFor(ssg.id); fileInputRef.current?.click(); }} style={{ color: 'var(--text-muted)', padding: '0.25rem', zIndex: 3, position: 'relative' }}>
+                                  <ImageIcon size={12} />
+                                </button>
                                 <button onClick={(e) => handleDeleteSubSubGoal(goal.id, sg.id, ssg.id, e)} style={{ color: 'var(--text-muted)', padding: '0.25rem', zIndex: 3, position: 'relative' }}>
                                   <Trash2 size={12} />
                                 </button>
@@ -688,6 +791,19 @@ const TrackDetail = () => {
       </div>
 
       <EditTrackModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} track={track} onUpdate={(updated) => setTrack(updated)} />
+      <ImageModal 
+        isOpen={!!viewingImage} 
+        onClose={() => setViewingImage(null)} 
+        imageUrl={viewingImage?.url}
+        onDelete={() => handleRemoveImage(viewingImage?.goalId)}
+      />
+      <input 
+        type="file" 
+        accept="image/*" 
+        ref={fileInputRef} 
+        style={{ display: 'none' }} 
+        onChange={handleSetImage} 
+      />
 
       {showConfirmDelete && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
