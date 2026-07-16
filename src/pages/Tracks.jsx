@@ -67,13 +67,17 @@ const Tracks = () => {
                 <h3 style={{ fontWeight: 800, fontSize: '1.25rem' }}>{track.name}</h3>
               </div>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                Lv {track.level}
+                {track.goals && track.goals.length > 0 ? `${track.goals.filter(g => g.completed).length}/${track.goals.length}` : '0/0'}
               </span>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              <span>{track.goals ? track.goals.filter(g => g.completed).length : 0} / {track.goals ? track.goals.length : 0} Goals</span>
-              <span>{track.xp % 100} XP</span>
+            <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: track.goals && track.goals.length > 0 ? `${(track.goals.filter(g => g.completed).length / track.goals.length) * 100}%` : '0%' }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                style={{ height: '100%', backgroundColor: track.color || 'var(--accent-primary)' }}
+              />
             </div>
           </motion.div>
         ))}

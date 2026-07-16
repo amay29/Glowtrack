@@ -73,8 +73,8 @@ const History = () => {
                 }} />
                 <h3 style={{ fontWeight: 800, fontSize: '1.25rem', textDecoration: 'line-through', color: 'var(--text-secondary)' }}>{track.name}</h3>
               </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                Lv {track.level}
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white', backgroundColor: 'var(--success-color)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                Completed
               </span>
             </div>
 

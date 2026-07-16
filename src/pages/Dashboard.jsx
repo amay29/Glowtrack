@@ -74,7 +74,7 @@ const Dashboard = () => {
                 <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>{track.name}</h3>
               </div>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                Lv {track.level}
+                {track.goals && track.goals.length > 0 ? `${track.goals.filter(g => g.completed).length}/${track.goals.length}` : '0/0'}
               </span>
             </div>
             
@@ -82,13 +82,10 @@ const Dashboard = () => {
             <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: `${(track.xp % 100)}%` }}
+                animate={{ width: track.goals && track.goals.length > 0 ? `${(track.goals.filter(g => g.completed).length / track.goals.length) * 100}%` : '0%' }}
                 transition={{ duration: 1, ease: "easeOut" }}
                 style={{ height: '100%', backgroundColor: track.color || 'var(--accent-primary)' }}
               />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{track.xp % 100}/100 XP to next level</span>
             </div>
           </motion.div>
         ))}

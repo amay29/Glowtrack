@@ -168,6 +168,15 @@ const TrackDetail = () => {
   const hasGoals = track.goals && track.goals.length > 0;
   const isAllGoalsCompleted = hasGoals && track.goals.every(g => g.completed);
 
+  useEffect(() => {
+    if (isAllGoalsCompleted && !track.isCompleted) {
+      const timer = setTimeout(() => {
+        handleMoveToHistory();
+      }, 1500); // 1.5 seconds delay for celebration
+      return () => clearTimeout(timer);
+    }
+  }, [isAllGoalsCompleted, track.isCompleted]);
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -226,15 +235,8 @@ const TrackDetail = () => {
               </motion.div>
             </div>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              Congratulations! You've checked off all the goals in this track.
+              Congratulations! You've checked off all the goals in this track. Moving to History...
             </p>
-            <button 
-              onClick={handleMoveToHistory} 
-              className="btn-primary" 
-              style={{ width: '100%', padding: '0.75rem', fontSize: '0.875rem' }}
-            >
-              Move to History
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -264,16 +266,18 @@ const TrackDetail = () => {
         </h1>
       </div>
 
-      {/* Level & XP Bar */}
+      {/* Progress Bar */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>Level {track.level}</span>
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{track.xp % 100} / 100 XP</span>
+          <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>Progress</span>
+          <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
+            {hasGoals ? `${track.goals.filter(g => g.completed).length} / ${track.goals.length}` : '0 / 0'}
+          </span>
         </div>
         <div style={{ width: '100%', height: '10px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
           <motion.div 
             initial={{ width: 0 }}
-            animate={{ width: `${(track.xp % 100)}%` }}
+            animate={{ width: hasGoals ? `${(track.goals.filter(g => g.completed).length / track.goals.length) * 100}%` : '0%' }}
             transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
             style={{ height: '100%', backgroundColor: track.color || 'var(--accent-primary)', borderRadius: 'var(--radius-full)' }}
           />
@@ -353,9 +357,26 @@ const TrackDetail = () => {
                 fontSize: '0.95rem',
                 textDecoration: goal.completed ? 'line-through' : 'none',
                 transition: 'all 0.3s ease',
-                color: 'var(--text-primary)'
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flexWrap: 'wrap'
               }}>
                 {goal.title}
+                {goal.subGoals && goal.subGoals.length > 0 && (
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    padding: '0.15rem 0.4rem', 
+                    borderRadius: 'var(--radius-sm)', 
+                    backgroundColor: goal.completed ? 'var(--success-color)' : 'var(--bg-primary)',
+                    color: goal.completed ? 'white' : 'var(--text-secondary)',
+                    fontWeight: 800,
+                    textDecoration: 'none'
+                  }}>
+                    {goal.completed ? 'Completed' : `${goal.subGoals.filter(sg => sg.completed).length}/${goal.subGoals.length}`}
+                  </span>
+                )}
               </span>
 
               {!track.isCompleted && (
