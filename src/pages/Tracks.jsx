@@ -2,23 +2,66 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
-import { getTracks } from '../lib/storage';
+import { getTracks, deleteTrack, updateTrack } from '../lib/storage';
 import AddTrackModal from '../components/AddTrackModal';
+import EditTrackModal from '../components/EditTrackModal';
+import TrackOptionsModal from '../components/TrackOptionsModal';
 
 const Tracks = () => {
   const navigate = useNavigate();
   const [tracks, setTracks] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState(null);
+  
+  // Long press logic
+  const [pressTimer, setPressTimer] = useState(null);
+  const [isLongPress, setIsLongPress] = useState(false);
 
   useEffect(() => {
+    loadTracks();
+  }, []);
+
+  const loadTracks = () => {
     const allTracks = getTracks();
     setTracks(allTracks.filter(t => !t.isCompleted));
-  }, []);
+  };
 
   const handleAddTrack = (newTrack) => {
     setTracks([newTrack, ...tracks]);
     setIsAddModalOpen(false);
     navigate(`/track/${newTrack.id}`);
+  };
+
+  const handleDelete = (id) => {
+    deleteTrack(id);
+    loadTracks();
+  };
+
+  const handleUpdate = (updatedTrack) => {
+    setTracks(tracks.map(t => t.id === updatedTrack.id ? updatedTrack : t));
+  };
+
+  const handlePointerDown = (track) => {
+    setIsLongPress(false);
+    const timer = setTimeout(() => {
+      setIsLongPress(true);
+      setSelectedTrack(track);
+      setIsOptionsOpen(true);
+    }, 500); // 500ms long press
+    setPressTimer(timer);
+  };
+
+  const handlePointerUp = (track) => {
+    if (pressTimer) clearTimeout(pressTimer);
+    if (!isLongPress && !isOptionsOpen) {
+      navigate(`/track/${track.id}`);
+    }
+  };
+
+  const handlePointerCancel = () => {
+    if (pressTimer) clearTimeout(pressTimer);
   };
 
   return (
@@ -56,8 +99,11 @@ const Tracks = () => {
             className="card" 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => navigate(`/track/${track.id}`)}
-            style={{ cursor: 'pointer' }}
+            onPointerDown={() => handlePointerDown(track)}
+            onPointerUp={() => handlePointerUp(track)}
+            onPointerLeave={handlePointerCancel}
+            onPointerCancel={handlePointerCancel}
+            style={{ cursor: 'pointer', touchAction: 'none' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -88,6 +134,19 @@ const Tracks = () => {
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
         onAdd={handleAddTrack}
+      />
+      <TrackOptionsModal
+        isOpen={isOptionsOpen}
+        onClose={() => setIsOptionsOpen(false)}
+        track={selectedTrack}
+        onEdit={() => setIsEditOpen(true)}
+        onDelete={handleDelete}
+      />
+      <EditTrackModal 
+        isOpen={isEditOpen} 
+        onClose={() => setIsEditOpen(false)} 
+        track={selectedTrack} 
+        onUpdate={handleUpdate} 
       />
     </motion.div>
   );

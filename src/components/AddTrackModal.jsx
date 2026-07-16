@@ -60,8 +60,9 @@ const AddTrackModal = ({ isOpen, onClose, onAdd }) => {
         style={{
           position: 'fixed',
           bottom: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: 0,
+          right: 0,
+          margin: '0 auto',
           width: '100%',
           maxWidth: '480px',
           backgroundColor: 'var(--bg-secondary)',

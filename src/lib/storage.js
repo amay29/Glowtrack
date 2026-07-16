@@ -211,8 +211,9 @@ export const addNotifiedGoal = (goalId) => {
 
 // Initial Demo Data
 export const initDemoData = () => {
-  const tracks = getTracks();
-  if (tracks.length === 0) {
+  const isInitialized = getItem('glowtrack_initialized', false);
+  if (!isInitialized) {
+    setItem('glowtrack_initialized', true);
     saveTracks([
       {
         id: '1',
