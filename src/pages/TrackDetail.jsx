@@ -3,15 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Check, Edit2, Trash2, Plus, Sparkles, CornerDownRight, Clock, Calendar } from 'lucide-react';
 import { getTracks, updateTrack, deleteTrack, archiveTrack } from '../lib/storage';
-import SessionLogModal from '../components/SessionLogModal';
+import { useTimer } from '../context/TimerContext';
+import { playPopSound, playChimeSound } from '../lib/audio';
 import EditTrackModal from '../components/EditTrackModal';
 
 const TrackDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { openTimerModal } = useTimer();
   
   const [track, setTrack] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [activeLogGoal, setActiveLogGoal] = useState(null);
   
@@ -53,6 +54,7 @@ const TrackDetail = () => {
     const goal = track.goals.find(g => g.id === goalId);
     if (!goal) return;
     const newCompleted = !goal.completed;
+    if (newCompleted) playPopSound();
     
     const updatedSubGoals = (goal.subGoals || []).map(sg => ({ 
       ...sg, 
@@ -73,6 +75,7 @@ const TrackDetail = () => {
     const subGoal = (goal.subGoals || []).find(sg => sg.id === subGoalId);
     if (!subGoal) return;
     const newCompleted = !subGoal.completed;
+    if (newCompleted) playPopSound();
     
     const updatedSubSubGoals = (subGoal.subGoals || []).map(ssg => ({ ...ssg, completed: newCompleted }));
 
@@ -97,6 +100,7 @@ const TrackDetail = () => {
               ssg.id === subSubGoalId ? { ...ssg, completed: !ssg.completed } : ssg
             );
             const allSubSubCompleted = updatedSubSubGoals.length > 0 && updatedSubSubGoals.every(ssg => ssg.completed);
+            if (updatedSubSubGoals.find(ssg => ssg.id === subSubGoalId && ssg.completed)) playPopSound();
             return { ...sg, subGoals: updatedSubSubGoals, completed: allSubSubCompleted };
           }
           return sg;
@@ -191,7 +195,7 @@ const TrackDetail = () => {
           return sg;
         });
         const allSubCompleted = subGoals.length > 0 ? subGoals.every(sg => sg.completed) : g.completed;
-        return { ...g, subGoals, completed: allSubCompleted };
+        return { ...g, subGoals: subGoals, completed: allSubCompleted };
       }
       return g;
     });
@@ -223,15 +227,15 @@ const TrackDetail = () => {
 
   const handleMoveToHistory = () => {
     if (track) {
+      playChimeSound();
       archiveTrack(track.id);
       navigate('/history');
     }
   };
 
-  const openLogModalFor = (id, title) => {
+  const openLogModalFor = (goalId, title) => {
     if (track && track.isCompleted) return;
-    setActiveLogGoal({ id, title });
-    setIsModalOpen(true);
+    openTimerModal(id, { id: goalId, title });
   };
 
   const formatTimeBadge = (mins) => {
@@ -456,19 +460,16 @@ const TrackDetail = () => {
 
               {!track.isCompleted && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ position: 'relative' }}>
-                    <input 
-                      type="datetime-local"
-                      value={goal.deadline || ''}
-                      onChange={(e) => handleSetDeadline(goal.id, e.target.value)}
-                      style={{
-                        position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2
-                      }}
-                    />
-                    <button style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
-                      <Calendar size={16} />
-                    </button>
-                  </div>
+                  <input 
+                    type="datetime-local"
+                    value={goal.deadline || ''}
+                    onChange={(e) => handleSetDeadline(goal.id, e.target.value)}
+                    style={{
+                      padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
+                      color: 'var(--text-secondary)', fontSize: '0.75rem', outline: 'none'
+                    }}
+                  />
                   <button 
                     onClick={() => setAddingSubGoalFor(addingSubGoalFor === goal.id ? null : goal.id)}
                     style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === goal.id ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)', zIndex: 3, position: 'relative' }}
@@ -522,19 +523,16 @@ const TrackDetail = () => {
 
                       {!track.isCompleted && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <div style={{ position: 'relative' }}>
-                            <input 
-                              type="datetime-local"
-                              value={sg.deadline || ''}
-                              onChange={(e) => handleSetDeadline(sg.id, e.target.value)}
-                              style={{
-                                position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2
-                              }}
-                            />
-                            <button style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
-                              <Calendar size={14} />
-                            </button>
-                          </div>
+                          <input 
+                            type="datetime-local"
+                            value={sg.deadline || ''}
+                            onChange={(e) => handleSetDeadline(sg.id, e.target.value)}
+                            style={{
+                              padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
+                              border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
+                              color: 'var(--text-secondary)', fontSize: '0.75rem', outline: 'none'
+                            }}
+                          />
                           <button 
                             onClick={() => setAddingSubGoalFor(addingSubGoalFor === `${goal.id}-${sg.id}` ? null : `${goal.id}-${sg.id}`)}
                             style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === `${goal.id}-${sg.id}` ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)', zIndex: 3, position: 'relative' }}
@@ -588,19 +586,16 @@ const TrackDetail = () => {
 
                             {!track.isCompleted && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <div style={{ position: 'relative' }}>
-                                  <input 
-                                    type="datetime-local"
-                                    value={ssg.deadline || ''}
-                                    onChange={(e) => handleSetDeadline(ssg.id, e.target.value)}
-                                    style={{
-                                      position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2
-                                    }}
-                                  />
-                                  <button style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
-                                    <Calendar size={12} />
-                                  </button>
-                                </div>
+                                <input 
+                                  type="datetime-local"
+                                  value={ssg.deadline || ''}
+                                  onChange={(e) => handleSetDeadline(ssg.id, e.target.value)}
+                                  style={{
+                                    padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
+                                    color: 'var(--text-secondary)', fontSize: '0.75rem', outline: 'none'
+                                  }}
+                                />
                                 <button onClick={(e) => handleDeleteSubSubGoal(goal.id, sg.id, ssg.id, e)} style={{ color: 'var(--text-muted)', padding: '0.25rem', zIndex: 3, position: 'relative' }}>
                                   <Trash2 size={12} />
                                 </button>
@@ -673,17 +668,6 @@ const TrackDetail = () => {
           </div>
         )}
       </div>
-
-      <SessionLogModal 
-        isOpen={isModalOpen} 
-        onClose={() => {
-          setIsModalOpen(false);
-          setActiveLogGoal(null);
-          loadTrack(); // reload stats and timeSpent
-        }} 
-        trackId={track.id}
-        selectedGoal={activeLogGoal}
-      />
 
       <EditTrackModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} track={track} onUpdate={(updated) => setTrack(updated)} />
 

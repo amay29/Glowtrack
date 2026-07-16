@@ -8,6 +8,9 @@ import Notes from './pages/Notes';
 import History from './pages/History';
 import Stats from './pages/Stats';
 import { initDemoData, getTracks, getNotifiedGoals, addNotifiedGoal } from './lib/storage';
+import { TimerProvider } from './context/TimerContext';
+import SessionLogModal from './components/SessionLogModal';
+import FloatingTimer from './components/FloatingTimer';
 import './App.css';
 
 function App() {
@@ -71,21 +74,25 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <div className="app-container">
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/tracks" element={<Tracks />} />
-            <Route path="/track/:id" element={<TrackDetail />} />
-            <Route path="/history" element={<History />} />
-            <Route path="/stats" element={<Stats />} />
-            <Route path="/notes" element={<Notes />} />
-          </Routes>
-        </main>
-        <BottomNav />
-      </div>
-    </Router>
+    <TimerProvider>
+      <Router>
+        <div className="app-container">
+          <main className="main-content">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/tracks" element={<Tracks />} />
+              <Route path="/track/:id" element={<TrackDetail />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/stats" element={<Stats />} />
+              <Route path="/notes" element={<Notes />} />
+            </Routes>
+          </main>
+          <BottomNav />
+          <SessionLogModal />
+          <FloatingTimer />
+        </div>
+      </Router>
+    </TimerProvider>
   );
 }
 

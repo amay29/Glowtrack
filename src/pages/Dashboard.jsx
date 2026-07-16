@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Play, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 import { getSessions, getTracks } from '../lib/storage';
-import SessionLogModal from '../components/SessionLogModal';
+import { useTimer } from '../context/TimerContext';
+import ThemeToggle from '../components/ThemeToggle';
 
 const Dashboard = () => {
   const [thisWeekMins, setThisWeekMins] = useState(0);
   const [dueGoals, setDueGoals] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { openTimerModal } = useTimer();
 
   useEffect(() => {
     loadData();
@@ -80,11 +81,12 @@ const Dashboard = () => {
       transition={{ duration: 0.3 }}
       style={{ paddingBottom: '2rem' }}
     >
-      <header className="page-header" style={{ marginBottom: '2.5rem' }}>
+      <header className="page-header" style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="page-title">Good Morning, Amay! 🌤️</h1>
           <p className="page-subtitle">Ready to glow up your skills today?</p>
         </div>
+        <ThemeToggle />
       </header>
 
       {/* Summary Card */}
@@ -138,21 +140,13 @@ const Dashboard = () => {
           Log a quick session to build your habit.
         </p>
         <button 
-          onClick={() => setIsModalOpen(true)}
           className="btn-primary" 
-          style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+          onClick={() => openTimerModal(null)}
+          style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', justifyContent: 'center' }}
         >
           <Play size={20} fill="currentColor" /> Log Session
         </button>
       </div>
-
-      <SessionLogModal 
-        isOpen={isModalOpen} 
-        onClose={() => {
-          setIsModalOpen(false);
-          loadData();
-        }} 
-      />
 
     </motion.div>
   );

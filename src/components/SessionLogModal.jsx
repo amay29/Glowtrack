@@ -1,84 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Square, Check, Flame, Clock } from 'lucide-react';
-import { addSession } from '../lib/storage';
+import { useTimer } from '../context/TimerContext';
 
-const SessionLogModal = ({ isOpen, onClose, trackId, selectedGoal }) => {
-  // mode: 'stopwatch' | 'timer' | 'manual'
-  const [mode, setMode] = useState('stopwatch'); 
-  const [seconds, setSeconds] = useState(0); // For stopwatch
-  const [timerSeconds, setTimerSeconds] = useState(25 * 60); // Default 25 mins
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
+const SessionLogModal = () => {
+  const {
+    mode, setMode,
+    seconds,
+    timerSeconds, setTimerSeconds,
+    isTimerRunning, setIsTimerRunning,
+    activeGoal,
+    isModalOpen, closeTimerModal,
+    showCelebration, handleFinish
+  } = useTimer();
+
   const [manualMinutes, setManualMinutes] = useState(25);
-  const [showCelebration, setShowCelebration] = useState(false);
-
-  // Timer/Stopwatch loop
-  useEffect(() => {
-    let interval;
-    if (isTimerRunning) {
-      interval = setInterval(() => {
-        if (mode === 'stopwatch') {
-          setSeconds(s => s + 1);
-        } else if (mode === 'timer') {
-          setTimerSeconds(s => {
-            if (s <= 1) {
-              clearInterval(interval);
-              setIsTimerRunning(false);
-              handleFinish(true); // auto finish
-              return 0;
-            }
-            return s - 1;
-          });
-        }
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, mode]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setSeconds(0);
-      setTimerSeconds(25 * 60);
-      setIsTimerRunning(false);
-      setShowCelebration(false);
-      setMode('stopwatch');
-    }
-  }, [isOpen]);
-
-  const handleFinish = (autoComplete = false) => {
-    if (isTimerRunning) setIsTimerRunning(false);
-    
-    let duration = 0;
-    if (mode === 'stopwatch') {
-      duration = Math.round(seconds / 60);
-      if (duration === 0 && seconds > 10) duration = 1; // Round up if at least 10s
-    } else if (mode === 'timer') {
-      // Calculate how much time passed vs original target. Actually, just record what they did or if completed.
-      // Wait, if autoComplete, duration = initial target. But we don't store initial target easily.
-      // For simplicity, let's just record the elapsed time for timer:
-      // (25 * 60 - timerSeconds) / 60
-      const elapsedMins = Math.round((25 * 60 - timerSeconds) / 60);
-      duration = elapsedMins > 0 ? elapsedMins : (autoComplete ? 25 : 0);
-    } else {
-      duration = manualMinutes;
-    }
-
-    if (duration > 0 && trackId) {
-      addSession({
-        trackId: trackId,
-        goalId: selectedGoal?.id || null,
-        durationMinutes: duration,
-      });
-      
-      setShowCelebration(true);
-      setTimeout(() => {
-        onClose();
-        setShowCelebration(false);
-      }, 2500);
-    } else {
-      onClose();
-    }
-  };
 
   const formatTime = (totalSeconds) => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -86,11 +22,15 @@ const SessionLogModal = ({ isOpen, onClose, trackId, selectedGoal }) => {
     return `${m}:${s}`;
   };
 
-  if (!isOpen && !showCelebration) return null;
+  const onFinishClick = () => {
+    handleFinish(false, manualMinutes);
+  };
+
+  if (!isModalOpen && !showCelebration) return null;
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isModalOpen && (
         <>
           <motion.div 
             initial={{ opacity: 0 }} 
@@ -102,7 +42,7 @@ const SessionLogModal = ({ isOpen, onClose, trackId, selectedGoal }) => {
               backgroundColor: 'rgba(0,0,0,0.5)',
               zIndex: 100
             }}
-            onClick={onClose}
+            onClick={closeTimerModal}
           />
           
           <motion.div
@@ -149,13 +89,13 @@ const SessionLogModal = ({ isOpen, onClose, trackId, selectedGoal }) => {
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <Clock size={20} color="var(--accent-primary)" /> Log Session
                     </h2>
-                    {selectedGoal && (
+                    {activeGoal && (
                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem', fontWeight: 600 }}>
-                        Target: {selectedGoal.title}
+                        Target: {activeGoal.title}
                       </p>
                     )}
                   </div>
-                  <button onClick={onClose} style={{ color: 'var(--text-muted)' }}><X size={24} /></button>
+                  <button onClick={closeTimerModal} style={{ color: 'var(--text-muted)' }}><X size={24} /></button>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', backgroundColor: 'var(--bg-primary)', padding: '0.25rem', borderRadius: 'var(--radius-md)' }}>
@@ -219,7 +159,7 @@ const SessionLogModal = ({ isOpen, onClose, trackId, selectedGoal }) => {
                 )}
 
                 <button 
-                  onClick={() => handleFinish(false)} 
+                  onClick={onFinishClick} 
                   className="btn-primary" 
                   style={{ width: '100%', padding: '1rem', backgroundColor: ((mode === 'stopwatch' && seconds < 10) || (mode === 'timer' && timerSeconds === 25*60 && !isTimerRunning)) ? 'var(--bg-tertiary)' : 'var(--success-color)' }}
                 >
