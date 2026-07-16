@@ -1,0 +1,154 @@
+// Local storage keys
+const KEYS = {
+  TRACKS: 'glowtrack_tracks',
+  SESSIONS: 'glowtrack_sessions',
+  NOTES: 'glowtrack_notes',
+  USER_STATS: 'glowtrack_user_stats',
+};
+
+// Generic get/set
+const getItem = (key, defaultValue) => {
+  try {
+    const item = window.localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error(`Error reading ${key} from localStorage`, error);
+    return defaultValue;
+  }
+};
+
+const setItem = (key, value) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Error writing ${key} to localStorage`, error);
+  }
+};
+
+// Tracks
+export const getTracks = () => getItem(KEYS.TRACKS, []);
+export const saveTracks = (tracks) => setItem(KEYS.TRACKS, tracks);
+export const addTrack = (track) => {
+  const tracks = getTracks();
+  const newTrack = {
+    id: Date.now().toString(),
+    createdAt: new Date().toISOString(),
+    name: track.name,
+    color: track.color || 'var(--accent-primary)',
+    level: 1,
+    xp: 0,
+    goals: track.goals || [], // { id, title, completed }
+    ...track
+  };
+  saveTracks([...tracks, newTrack]);
+  return newTrack;
+};
+export const updateTrack = (updatedTrack) => {
+  const tracks = getTracks();
+  const newTracks = tracks.map(t => t.id === updatedTrack.id ? updatedTrack : t);
+  saveTracks(newTracks);
+  return updatedTrack;
+};
+
+// Sessions
+export const getSessions = () => getItem(KEYS.SESSIONS, []);
+export const saveSessions = (sessions) => setItem(KEYS.SESSIONS, sessions);
+export const addSession = (session) => {
+  const sessions = getSessions();
+  const newSession = {
+    id: Date.now().toString(),
+    date: new Date().toISOString(),
+    durationMinutes: session.durationMinutes || 0,
+    trackId: session.trackId,
+    note: session.note || '',
+    ...session
+  };
+  saveSessions([...sessions, newSession]);
+  
+  // Update stats
+  updateStreak();
+  
+  return newSession;
+};
+
+// Notes
+export const getNotes = () => getItem(KEYS.NOTES, []);
+export const saveNotes = (notes) => setItem(KEYS.NOTES, notes);
+export const addNote = (note) => {
+  const notes = getNotes();
+  const newNote = {
+    id: Date.now().toString(),
+    date: new Date().toISOString(),
+    content: note.content || '',
+    ...note
+  };
+  saveNotes([newNote, ...notes]);
+  return newNote;
+};
+
+// User Stats & Streak
+export const getUserStats = () => getItem(KEYS.USER_STATS, { currentStreak: 0, lastStudyDate: null });
+export const saveUserStats = (stats) => setItem(KEYS.USER_STATS, stats);
+
+const updateStreak = () => {
+  const stats = getUserStats();
+  const today = new Date().toISOString().split('T')[0];
+  
+  if (!stats.lastStudyDate) {
+    stats.currentStreak = 1;
+    stats.lastStudyDate = today;
+  } else {
+    const lastDate = new Date(stats.lastStudyDate);
+    const currentDate = new Date(today);
+    
+    // Calculate difference in days
+    const diffTime = Math.abs(currentDate - lastDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      // Studied yesterday
+      stats.currentStreak += 1;
+      stats.lastStudyDate = today;
+    } else if (diffDays > 1) {
+      // Missed a day
+      stats.currentStreak = 1;
+      stats.lastStudyDate = today;
+    }
+    // If diffDays === 0, they already studied today, streak remains same
+  }
+  
+  saveUserStats(stats);
+};
+
+// Initial Demo Data
+export const initDemoData = () => {
+  const tracks = getTracks();
+  if (tracks.length === 0) {
+    saveTracks([
+      {
+        id: '1',
+        createdAt: new Date().toISOString(),
+        name: 'English Speaking',
+        color: 'var(--accent-primary)',
+        level: 3,
+        xp: 450,
+        goals: [
+          { id: 'g1', title: 'Practice introduction', completed: true },
+          { id: 'g2', title: 'Learn 5 new vocabularies', completed: false },
+          { id: 'g3', title: 'Record a 2-min audio', completed: false }
+        ]
+      },
+      {
+        id: '2',
+        createdAt: new Date().toISOString(),
+        name: 'Business Strategy',
+        color: 'var(--success-color)',
+        level: 1,
+        xp: 120,
+        goals: [
+          { id: 'g4', title: 'Read chapter 1', completed: false }
+        ]
+      }
+    ]);
+  }
+};
