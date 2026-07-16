@@ -14,11 +14,13 @@ const COLORS = [
 
 const EditTrackModal = ({ isOpen, onClose, track, onUpdate }) => {
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [color, setColor] = useState(COLORS[0]);
 
   useEffect(() => {
     if (track) {
       setName(track.name);
+      setDescription(track.description || '');
       setColor(track.color || COLORS[0]);
     }
   }, [track]);
@@ -30,6 +32,7 @@ const EditTrackModal = ({ isOpen, onClose, track, onUpdate }) => {
     const updated = updateTrack({
       ...track,
       name: name.trim(),
+      description: description.trim(),
       color: color
     });
 
@@ -93,6 +96,22 @@ const EditTrackModal = ({ isOpen, onClose, track, onUpdate }) => {
                 width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
                 color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', fontSize: '1rem'
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.875rem' }}>Description (Optional)</label>
+            <textarea 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What is this track about?"
+              rows={2}
+              style={{
+                width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', fontSize: '0.95rem',
+                resize: 'none'
               }}
             />
           </div>

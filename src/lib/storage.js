@@ -152,9 +152,10 @@ export const addNote = (note) => {
   return newNote;
 };
 
-export const updateNote = (id, updatedContent) => {
+export const updateNote = (id, updates) => {
   const notes = getNotes();
-  const newNotes = notes.map(n => n.id === id ? { ...n, content: updatedContent, updatedAt: new Date().toISOString() } : n);
+  const updateObj = typeof updates === 'string' ? { content: updates } : updates;
+  const newNotes = notes.map(n => n.id === id ? { ...n, ...updateObj, updatedAt: new Date().toISOString() } : n);
   saveNotes(newNotes);
 };
 

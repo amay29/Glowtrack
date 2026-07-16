@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Play, Clock } from 'lucide-react';
-import { getSessions } from '../lib/storage';
+import { Play, Clock, Calendar, CheckCircle2 } from 'lucide-react';
+import { getSessions, getTracks } from '../lib/storage';
 import SessionLogModal from '../components/SessionLogModal';
 
 const Dashboard = () => {
   const [thisWeekMins, setThisWeekMins] = useState(0);
+  const [dueGoals, setDueGoals] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -31,6 +33,35 @@ const Dashboard = () => {
     });
 
     setThisWeekMins(mins);
+
+    // Calculate Due Goals
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tracks = getTracks();
+    const dues = [];
+
+    const findDueGoals = (list, trackId, trackColor, trackName) => {
+      list.forEach(g => {
+        if (!g.completed && g.deadline) {
+          const dDate = new Date(g.deadline);
+          dDate.setHours(0, 0, 0, 0);
+          if (dDate <= today) {
+            dues.push({ ...g, trackId, trackColor, trackName, isOverdue: dDate < today });
+          }
+        }
+        if (g.subGoals) {
+          findDueGoals(g.subGoals, trackId, trackColor, trackName);
+        }
+      });
+    };
+
+    tracks.forEach(t => {
+      if (!t.isCompleted && t.goals) {
+        findDueGoals(t.goals, t.id, t.color, t.name);
+      }
+    });
+
+    setDueGoals(dues);
   };
 
   const formatMinutes = (totalMins) => {
@@ -66,6 +97,39 @@ const Dashboard = () => {
         </h3>
         <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Total Time This Week</span>
       </div>
+
+      {/* Due Today */}
+      {dueGoals.length > 0 && (
+        <div style={{ marginBottom: '2.5rem' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Calendar size={20} color="var(--error-color)" /> Due Today
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {dueGoals.map((g, idx) => (
+              <motion.div 
+                key={`${g.id}-${idx}`}
+                className="card"
+                style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                  padding: '1rem', borderLeft: `4px solid ${g.trackColor}` 
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{g.title}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {g.trackName} • <span style={{ color: g.isOverdue ? 'var(--error-color)' : '#db2777' }}>
+                      {g.isOverdue ? 'Overdue' : 'Today'}
+                    </span>
+                  </span>
+                </div>
+                <Link to={`/track/${g.trackId}`} style={{ color: 'var(--accent-primary)', padding: '0.5rem', backgroundColor: 'var(--bg-primary)', borderRadius: '50%' }}>
+                  <CheckCircle2 size={18} />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Focus / Quick Log CTA */}
       <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem', backgroundColor: 'var(--bg-secondary)', borderStyle: 'dashed' }}>

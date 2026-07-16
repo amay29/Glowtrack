@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Check, Edit2, Trash2, Plus, Sparkles, CornerDownRight, Clock } from 'lucide-react';
+import { ChevronLeft, Check, Edit2, Trash2, Plus, Sparkles, CornerDownRight, Clock, Calendar } from 'lucide-react';
 import { getTracks, updateTrack, deleteTrack, archiveTrack } from '../lib/storage';
 import SessionLogModal from '../components/SessionLogModal';
 import EditTrackModal from '../components/EditTrackModal';
@@ -198,6 +198,22 @@ const TrackDetail = () => {
     updateTrackData(updatedGoals);
   };
 
+  const handleSetDeadline = (goalId, dateStr) => {
+    if (!track) return;
+    const updateDeep = (list) => {
+      return list.map(item => {
+        if (item.id === goalId) {
+          return { ...item, deadline: dateStr };
+        }
+        if (item.subGoals) {
+          return { ...item, subGoals: updateDeep(item.subGoals) };
+        }
+        return item;
+      });
+    };
+    updateTrackData(updateDeep(track.goals));
+  };
+
   const handleDeleteTrack = () => {
     if (track) {
       deleteTrack(track.id);
@@ -227,6 +243,34 @@ const TrackDetail = () => {
         backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontWeight: 800
       }}>
         <Clock size={10} /> {mins}m
+      </span>
+    );
+  };
+
+  const formatDeadlineBadge = (deadline) => {
+    if (!deadline) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const date = new Date(deadline);
+    date.setHours(0, 0, 0, 0);
+    
+    let color = 'var(--text-secondary)';
+    let bg = 'var(--bg-tertiary)';
+    if (date.getTime() === today.getTime()) {
+      color = '#db2777'; // Pinkish
+      bg = '#fce7f3';
+    } else if (date < today) {
+      color = 'var(--error-color)';
+      bg = 'rgba(248, 113, 113, 0.1)';
+    }
+
+    return (
+      <span style={{ 
+        display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+        fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 'var(--radius-sm)', 
+        backgroundColor: bg, color: color, fontWeight: 800
+      }}>
+        <Calendar size={10} /> {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
       </span>
     );
   };
@@ -309,12 +353,17 @@ const TrackDetail = () => {
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
         <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: track.color || 'var(--accent-primary)' }} />
         <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
           {track.name}
         </h1>
       </div>
+      {track.description && (
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem', paddingLeft: '2rem' }}>
+          {track.description}
+        </p>
+      )}
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -396,6 +445,7 @@ const TrackDetail = () => {
                 }}>
                 {goal.title}
                 {formatTimeBadge(goal.timeSpent)}
+                {formatDeadlineBadge(goal.deadline)}
                 {goal.subGoals && goal.subGoals.length > 0 && (
                   <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 'var(--radius-sm)', backgroundColor: goal.completed ? 'var(--success-color)' : 'var(--bg-primary)', color: goal.completed ? 'white' : 'var(--text-secondary)', fontWeight: 800 }}>
                     {goal.completed ? 'Completed' : `${goal.subGoals.filter(sg => sg.completed).length}/${goal.subGoals.length}`}
@@ -405,13 +455,26 @@ const TrackDetail = () => {
 
               {!track.isCompleted && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="date"
+                      value={goal.deadline || ''}
+                      onChange={(e) => handleSetDeadline(goal.id, e.target.value)}
+                      style={{
+                        position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2
+                      }}
+                    />
+                    <button style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
+                      <Calendar size={16} />
+                    </button>
+                  </div>
                   <button 
                     onClick={() => setAddingSubGoalFor(addingSubGoalFor === goal.id ? null : goal.id)}
-                    style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === goal.id ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)' }}
+                    style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === goal.id ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)', zIndex: 3, position: 'relative' }}
                   >
                     <Plus size={16} />
                   </button>
-                  <button onClick={(e) => handleDeleteGoal(goal.id, e)} style={{ color: 'var(--error-color)', padding: '0.25rem' }}>
+                  <button onClick={(e) => handleDeleteGoal(goal.id, e)} style={{ color: 'var(--error-color)', padding: '0.25rem', zIndex: 3, position: 'relative' }}>
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -453,17 +516,31 @@ const TrackDetail = () => {
                         }}>
                         {sg.title}
                         {formatTimeBadge(sg.timeSpent)}
+                        {formatDeadlineBadge(sg.deadline)}
                       </span>
 
                       {!track.isCompleted && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ position: 'relative' }}>
+                            <input 
+                              type="date"
+                              value={sg.deadline || ''}
+                              onChange={(e) => handleSetDeadline(sg.id, e.target.value)}
+                              style={{
+                                position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2
+                              }}
+                            />
+                            <button style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
+                              <Calendar size={14} />
+                            </button>
+                          </div>
                           <button 
                             onClick={() => setAddingSubGoalFor(addingSubGoalFor === `${goal.id}-${sg.id}` ? null : `${goal.id}-${sg.id}`)}
-                            style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === `${goal.id}-${sg.id}` ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)' }}
+                            style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === `${goal.id}-${sg.id}` ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)', zIndex: 3, position: 'relative' }}
                           >
                             <Plus size={14} />
                           </button>
-                          <button onClick={(e) => handleDeleteSubGoal(goal.id, sg.id, e)} style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
+                          <button onClick={(e) => handleDeleteSubGoal(goal.id, sg.id, e)} style={{ color: 'var(--text-muted)', padding: '0.25rem', zIndex: 3, position: 'relative' }}>
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -505,12 +582,28 @@ const TrackDetail = () => {
                               }}>
                               {ssg.title}
                               {formatTimeBadge(ssg.timeSpent)}
+                              {formatDeadlineBadge(ssg.deadline)}
                             </span>
 
                             {!track.isCompleted && (
-                              <button onClick={(e) => handleDeleteSubSubGoal(goal.id, sg.id, ssg.id, e)} style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
-                                <Trash2 size={12} />
-                              </button>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div style={{ position: 'relative' }}>
+                                  <input 
+                                    type="date"
+                                    value={ssg.deadline || ''}
+                                    onChange={(e) => handleSetDeadline(ssg.id, e.target.value)}
+                                    style={{
+                                      position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2
+                                    }}
+                                  />
+                                  <button style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
+                                    <Calendar size={12} />
+                                  </button>
+                                </div>
+                                <button onClick={(e) => handleDeleteSubSubGoal(goal.id, sg.id, ssg.id, e)} style={{ color: 'var(--text-muted)', padding: '0.25rem', zIndex: 3, position: 'relative' }}>
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
                             )}
                           </motion.div>
                         ))}
