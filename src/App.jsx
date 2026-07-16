@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import BottomNav from './components/BottomNav';
 import Dashboard from './pages/Dashboard';
+import Tracks from './pages/Tracks';
 import TrackDetail from './pages/TrackDetail';
 import Notes from './pages/Notes';
 import { initDemoData } from './lib/storage';
@@ -18,7 +19,7 @@ function App() {
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/tracks" element={<div>Tracks Page (Under Construction)</div>} />
+            <Route path="/tracks" element={<Tracks />} />
             <Route path="/track/:id" element={<TrackDetail />} />
             <Route path="/notes" element={<Notes />} />
           </Routes>
