@@ -28,6 +28,7 @@ const setItem = (key, value) => {
 // Tracks
 export const getTracks = () => getItem(KEYS.TRACKS, []);
 export const saveTracks = (tracks) => setItem(KEYS.TRACKS, tracks);
+
 export const addTrack = (track) => {
   const tracks = getTracks();
   const newTrack = {
@@ -38,16 +39,41 @@ export const addTrack = (track) => {
     level: 1,
     xp: 0,
     goals: track.goals || [], // { id, title, completed }
+    isCompleted: false,
     ...track
   };
   saveTracks([...tracks, newTrack]);
   return newTrack;
 };
+
 export const updateTrack = (updatedTrack) => {
   const tracks = getTracks();
   const newTracks = tracks.map(t => t.id === updatedTrack.id ? updatedTrack : t);
   saveTracks(newTracks);
   return updatedTrack;
+};
+
+export const deleteTrack = (id) => {
+  const tracks = getTracks();
+  const newTracks = tracks.filter(t => t.id !== id);
+  saveTracks(newTracks);
+  
+  // Optionally clean up sessions related to this track
+  const sessions = getSessions();
+  const newSessions = sessions.filter(s => s.trackId !== id);
+  saveSessions(newSessions);
+};
+
+export const archiveTrack = (id) => {
+  const tracks = getTracks();
+  const newTracks = tracks.map(t => t.id === id ? { ...t, isCompleted: true } : t);
+  saveTracks(newTracks);
+};
+
+export const restoreTrack = (id) => {
+  const tracks = getTracks();
+  const newTracks = tracks.map(t => t.id === id ? { ...t, isCompleted: false } : t);
+  saveTracks(newTracks);
 };
 
 // Sessions
@@ -132,6 +158,7 @@ export const initDemoData = () => {
         color: 'var(--accent-primary)',
         level: 3,
         xp: 450,
+        isCompleted: false,
         goals: [
           { id: 'g1', title: 'Practice introduction', completed: true },
           { id: 'g2', title: 'Learn 5 new vocabularies', completed: false },
@@ -145,6 +172,7 @@ export const initDemoData = () => {
         color: 'var(--success-color)',
         level: 1,
         xp: 120,
+        isCompleted: false,
         goals: [
           { id: 'g4', title: 'Read chapter 1', completed: false }
         ]
