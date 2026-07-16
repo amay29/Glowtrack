@@ -162,20 +162,19 @@ const TrackDetail = () => {
     }
   };
 
-  if (!track) return null;
-
-  // Check if all goals are completed
-  const hasGoals = track.goals && track.goals.length > 0;
+  const hasGoals = track?.goals && track.goals.length > 0;
   const isAllGoalsCompleted = hasGoals && track.goals.every(g => g.completed);
 
   useEffect(() => {
-    if (isAllGoalsCompleted && !track.isCompleted) {
+    if (track && isAllGoalsCompleted && !track.isCompleted) {
       const timer = setTimeout(() => {
         handleMoveToHistory();
-      }, 1500); // 1.5 seconds delay for celebration
+      }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [isAllGoalsCompleted, track.isCompleted]);
+  }, [track, isAllGoalsCompleted]);
+
+  if (!track) return null;
 
   return (
     <motion.div
@@ -207,6 +206,7 @@ const TrackDetail = () => {
       <AnimatePresence>
         {isAllGoalsCompleted && !track.isCompleted && (
           <motion.div 
+            key="completion-banner"
             initial={{ scale: 0.9, opacity: 0, y: 10, height: 0 }}
             animate={{ scale: 1, opacity: 1, y: 0, height: 'auto' }}
             exit={{ scale: 0.9, opacity: 0, height: 0 }}

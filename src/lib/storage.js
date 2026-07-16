@@ -112,6 +112,18 @@ export const addNote = (note) => {
   return newNote;
 };
 
+export const updateNote = (id, updatedContent) => {
+  const notes = getNotes();
+  const newNotes = notes.map(n => n.id === id ? { ...n, content: updatedContent, updatedAt: new Date().toISOString() } : n);
+  saveNotes(newNotes);
+};
+
+export const deleteNote = (id) => {
+  const notes = getNotes();
+  const newNotes = notes.filter(n => n.id !== id);
+  saveNotes(newNotes);
+};
+
 // User Stats & Streak
 export const getUserStats = () => getItem(KEYS.USER_STATS, { currentStreak: 0, lastStudyDate: null });
 export const saveUserStats = (stats) => setItem(KEYS.USER_STATS, stats);
