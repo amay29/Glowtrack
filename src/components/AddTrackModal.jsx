@@ -70,7 +70,9 @@ const AddTrackModal = ({ isOpen, onClose, onAdd }) => {
           padding: '1.5rem',
           paddingBottom: '3rem',
           zIndex: 101,
-          boxShadow: 'var(--shadow-lg)'
+          boxShadow: 'var(--shadow-lg)',
+          maxHeight: '90vh',
+          overflowY: 'auto'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

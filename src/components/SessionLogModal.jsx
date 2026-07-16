@@ -63,7 +63,9 @@ const SessionLogModal = () => {
               padding: '1.5rem',
               paddingBottom: '3rem',
               zIndex: 101,
-              boxShadow: 'var(--shadow-lg)'
+              boxShadow: 'var(--shadow-lg)',
+              maxHeight: '90vh',
+              overflowY: 'auto'
             }}
           >
             {showCelebration ? (

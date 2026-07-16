@@ -49,7 +49,9 @@ const ProfileModal = ({ isOpen, onClose }) => {
               padding: '1.5rem',
               paddingBottom: '3rem',
               zIndex: 101,
-              boxShadow: 'var(--shadow-lg)'
+              boxShadow: 'var(--shadow-lg)',
+              maxHeight: '90vh',
+              overflowY: 'auto'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
