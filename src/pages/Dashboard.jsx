@@ -12,7 +12,8 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    setTracks(getTracks());
+    const allTracks = getTracks();
+    setTracks(allTracks.filter(t => !t.isCompleted));
     setStats(getUserStats());
   }, []);
 

@@ -11,7 +11,8 @@ const Tracks = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
-    setTracks(getTracks());
+    const allTracks = getTracks();
+    setTracks(allTracks.filter(t => !t.isCompleted));
   }, []);
 
   const handleAddTrack = (newTrack) => {
