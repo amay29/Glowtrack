@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Check, Play, Edit2, Trash2, Plus, Sparkles, CornerDownRight } from 'lucide-react';
+import { ChevronLeft, Check, Edit2, Trash2, Plus, Sparkles, CornerDownRight, Clock } from 'lucide-react';
 import { getTracks, updateTrack, deleteTrack, archiveTrack } from '../lib/storage';
 import SessionLogModal from '../components/SessionLogModal';
 import EditTrackModal from '../components/EditTrackModal';
@@ -13,11 +13,12 @@ const TrackDetail = () => {
   const [track, setTrack] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [activeLogGoal, setActiveLogGoal] = useState(null);
   
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   
-  const [addingSubGoalFor, setAddingSubGoalFor] = useState(null);
+  const [addingSubGoalFor, setAddingSubGoalFor] = useState(null); // stores { goalId, subGoalId } or just goalId string
   const [newSubGoalTitle, setNewSubGoalTitle] = useState('');
 
   useEffect(() => {
@@ -35,7 +36,6 @@ const TrackDetail = () => {
   };
 
   const updateTrackData = (updatedGoals) => {
-    // Count completed goals before and after to adjust XP
     const oldCompletedCount = track.goals.filter(g => g.completed).length;
     const newCompletedCount = updatedGoals.filter(g => g.completed).length;
     
@@ -52,15 +52,17 @@ const TrackDetail = () => {
     if (!track) return;
     const goal = track.goals.find(g => g.id === goalId);
     if (!goal) return;
-
     const newCompleted = !goal.completed;
-    // If checking main goal, check all subgoals. If unchecking, uncheck all.
-    const updatedSubGoals = (goal.subGoals || []).map(sg => ({ ...sg, completed: newCompleted }));
-
+    
+    const updatedSubGoals = (goal.subGoals || []).map(sg => ({ 
+      ...sg, 
+      completed: newCompleted,
+      subGoals: (sg.subGoals || []).map(ssg => ({ ...ssg, completed: newCompleted }))
+    }));
+    
     const updatedGoals = track.goals.map(g => 
       g.id === goalId ? { ...g, completed: newCompleted, subGoals: updatedSubGoals } : g
     );
-    
     updateTrackData(updatedGoals);
   };
 
@@ -68,64 +70,71 @@ const TrackDetail = () => {
     if (!track) return;
     const goal = track.goals.find(g => g.id === goalId);
     if (!goal) return;
+    const subGoal = (goal.subGoals || []).find(sg => sg.id === subGoalId);
+    if (!subGoal) return;
+    const newCompleted = !subGoal.completed;
+    
+    const updatedSubSubGoals = (subGoal.subGoals || []).map(ssg => ({ ...ssg, completed: newCompleted }));
 
     const updatedSubGoals = (goal.subGoals || []).map(sg => 
-      sg.id === subGoalId ? { ...sg, completed: !sg.completed } : sg
+      sg.id === subGoalId ? { ...sg, completed: newCompleted, subGoals: updatedSubSubGoals } : sg
     );
-
-    // If all subgoals are completed, parent is completed
     const allCompleted = updatedSubGoals.length > 0 && updatedSubGoals.every(sg => sg.completed);
 
     const updatedGoals = track.goals.map(g => 
       g.id === goalId ? { ...g, completed: allCompleted, subGoals: updatedSubGoals } : g
     );
+    updateTrackData(updatedGoals);
+  };
 
+  const handleToggleSubSubGoal = (goalId, subGoalId, subSubGoalId) => {
+    if (!track) return;
+    const updatedGoals = track.goals.map(g => {
+      if (g.id === goalId) {
+        const updatedSubGoals = (g.subGoals || []).map(sg => {
+          if (sg.id === subGoalId) {
+            const updatedSubSubGoals = (sg.subGoals || []).map(ssg => 
+              ssg.id === subSubGoalId ? { ...ssg, completed: !ssg.completed } : ssg
+            );
+            const allSubSubCompleted = updatedSubSubGoals.length > 0 && updatedSubSubGoals.every(ssg => ssg.completed);
+            return { ...sg, subGoals: updatedSubSubGoals, completed: allSubSubCompleted };
+          }
+          return sg;
+        });
+        const allSubCompleted = updatedSubGoals.length > 0 && updatedSubGoals.every(sg => sg.completed);
+        return { ...g, subGoals: updatedSubGoals, completed: allSubCompleted };
+      }
+      return g;
+    });
     updateTrackData(updatedGoals);
   };
 
   const handleAddGoal = (e) => {
     e.preventDefault();
     if (!newGoalTitle.trim() || !track) return;
-
-    const newGoal = {
-      id: Date.now().toString(),
-      title: newGoalTitle.trim(),
-      completed: false,
-      subGoals: []
-    };
-
-    const updatedGoals = [...(track.goals || []), newGoal];
-    updateTrackData(updatedGoals);
+    const newGoal = { id: Date.now().toString(), title: newGoalTitle.trim(), completed: false, subGoals: [] };
+    updateTrackData([...(track.goals || []), newGoal]);
     setNewGoalTitle('');
   };
 
   const handleDeleteGoal = (goalId, e) => {
     e.stopPropagation();
     if (!track) return;
-    const updatedGoals = track.goals.filter(g => g.id !== goalId);
-    updateTrackData(updatedGoals);
+    updateTrackData(track.goals.filter(g => g.id !== goalId));
   };
 
   const handleAddSubGoal = (goalId, e) => {
     e.preventDefault();
     if (!newSubGoalTitle.trim() || !track) return;
-
-    const newSubGoal = {
-      id: Date.now().toString(),
-      title: newSubGoalTitle.trim(),
-      completed: false
-    };
+    const newSubGoal = { id: Date.now().toString(), title: newSubGoalTitle.trim(), completed: false };
 
     const updatedGoals = track.goals.map(g => {
       if (g.id === goalId) {
-        // Adding a sub-goal makes the parent incomplete if the parent was complete
         const subGoals = [...(g.subGoals || []), newSubGoal];
-        const allCompleted = subGoals.every(sg => sg.completed);
-        return { ...g, subGoals, completed: allCompleted };
+        return { ...g, subGoals, completed: false }; // adding incomplete subgoal makes parent incomplete
       }
       return g;
     });
-
     updateTrackData(updatedGoals);
     setNewSubGoalTitle('');
     setAddingSubGoalFor(null);
@@ -134,17 +143,58 @@ const TrackDetail = () => {
   const handleDeleteSubGoal = (goalId, subGoalId, e) => {
     e.stopPropagation();
     if (!track) return;
-
     const updatedGoals = track.goals.map(g => {
       if (g.id === goalId) {
         const subGoals = (g.subGoals || []).filter(sg => sg.id !== subGoalId);
-        // Recalculate parent completion status
         const allCompleted = subGoals.length > 0 ? subGoals.every(sg => sg.completed) : g.completed;
         return { ...g, subGoals, completed: allCompleted };
       }
       return g;
     });
+    updateTrackData(updatedGoals);
+  };
 
+  const handleAddSubSubGoal = (goalId, subGoalId, e) => {
+    e.preventDefault();
+    if (!newSubGoalTitle.trim() || !track) return;
+    const newSubSubGoal = { id: Date.now().toString(), title: newSubGoalTitle.trim(), completed: false };
+
+    const updatedGoals = track.goals.map(g => {
+      if (g.id === goalId) {
+        const subGoals = (g.subGoals || []).map(sg => {
+          if (sg.id === subGoalId) {
+            const subSubGoals = [...(sg.subGoals || []), newSubSubGoal];
+            return { ...sg, subGoals: subSubGoals, completed: false };
+          }
+          return sg;
+        });
+        return { ...g, subGoals, completed: false };
+      }
+      return g;
+    });
+    updateTrackData(updatedGoals);
+    setNewSubGoalTitle('');
+    setAddingSubGoalFor(null);
+  };
+
+  const handleDeleteSubSubGoal = (goalId, subGoalId, subSubGoalId, e) => {
+    e.stopPropagation();
+    if (!track) return;
+    const updatedGoals = track.goals.map(g => {
+      if (g.id === goalId) {
+        const subGoals = (g.subGoals || []).map(sg => {
+          if (sg.id === subGoalId) {
+            const subSubGoals = (sg.subGoals || []).filter(ssg => ssg.id !== subSubGoalId);
+            const allSubSubCompleted = subSubGoals.length > 0 ? subSubGoals.every(ssg => ssg.completed) : sg.completed;
+            return { ...sg, subGoals: subSubGoals, completed: allSubSubCompleted };
+          }
+          return sg;
+        });
+        const allSubCompleted = subGoals.length > 0 ? subGoals.every(sg => sg.completed) : g.completed;
+        return { ...g, subGoals, completed: allSubCompleted };
+      }
+      return g;
+    });
     updateTrackData(updatedGoals);
   };
 
@@ -160,6 +210,25 @@ const TrackDetail = () => {
       archiveTrack(track.id);
       navigate('/history');
     }
+  };
+
+  const openLogModalFor = (id, title) => {
+    if (track && track.isCompleted) return;
+    setActiveLogGoal({ id, title });
+    setIsModalOpen(true);
+  };
+
+  const formatTimeBadge = (mins) => {
+    if (!mins) return null;
+    return (
+      <span style={{ 
+        display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+        fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 'var(--radius-sm)', 
+        backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontWeight: 800
+      }}>
+        <Clock size={10} /> {mins}m
+      </span>
+    );
   };
 
   const hasGoals = track?.goals && track.goals.length > 0;
@@ -212,17 +281,10 @@ const TrackDetail = () => {
             exit={{ scale: 0.9, opacity: 0, height: 0 }}
             className="card"
             style={{ 
-              backgroundColor: 'var(--bg-tertiary)', 
-              borderColor: 'var(--accent-primary)',
-              boxShadow: '0 0 20px rgba(126, 168, 248, 0.3)',
-              textAlign: 'center',
-              marginBottom: '1.5rem',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '0.75rem',
-              padding: '1.5rem',
-              overflow: 'hidden'
+              backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--accent-primary)',
+              boxShadow: '0 0 20px rgba(126, 168, 248, 0.3)', textAlign: 'center',
+              marginBottom: '1.5rem', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: '0.75rem', padding: '1.5rem', overflow: 'hidden'
             }}
           >
             <div style={{ color: 'var(--accent-primary)', display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -242,31 +304,18 @@ const TrackDetail = () => {
       </AnimatePresence>
 
       {track.isCompleted && (
-        <div 
-          className="card"
-          style={{ 
-            backgroundColor: 'var(--bg-primary)', 
-            borderStyle: 'dashed',
-            textAlign: 'center',
-            marginBottom: '1.5rem',
-            padding: '1rem'
-          }}
-        >
+        <div className="card" style={{ backgroundColor: 'var(--bg-primary)', borderStyle: 'dashed', textAlign: 'center', marginBottom: '1.5rem', padding: '1rem' }}>
           <span style={{ fontWeight: 800, color: 'var(--text-muted)' }}>🏆 Archived in History</span>
         </div>
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ 
-          width: '16px', height: '16px', borderRadius: '50%', 
-          backgroundColor: track.color || 'var(--accent-primary)' 
-        }} />
+        <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: track.color || 'var(--accent-primary)' }} />
         <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
           {track.name}
         </h1>
       </div>
 
-      {/* Progress Bar */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>Progress</span>
@@ -284,13 +333,10 @@ const TrackDetail = () => {
         </div>
       </div>
 
-      {/* Goal Add Form */}
       {!track.isCompleted && (
         <form onSubmit={handleAddGoal} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
           <input 
-            type="text" 
-            value={newGoalTitle}
-            onChange={(e) => setNewGoalTitle(e.target.value)}
+            type="text" value={newGoalTitle} onChange={(e) => setNewGoalTitle(e.target.value)}
             placeholder="Add new goal..."
             style={{
               flex: 1, padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
@@ -299,14 +345,12 @@ const TrackDetail = () => {
             }}
           />
           <button 
-            type="submit" 
-            disabled={!newGoalTitle.trim()}
+            type="submit" disabled={!newGoalTitle.trim()}
             style={{
               backgroundColor: newGoalTitle.trim() ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
               color: newGoalTitle.trim() ? 'white' : 'var(--text-muted)',
               width: '44px', height: '44px', borderRadius: 'var(--radius-md)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'var(--transition-bounce)'
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >
             <Plus size={20} />
@@ -320,60 +364,40 @@ const TrackDetail = () => {
         {track.goals && track.goals.map((goal) => (
           <div key={goal.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             
-            {/* Main Goal Item */}
+            {/* LEVEL 1: Main Goal */}
             <motion.div 
               className="card"
               style={{ 
-                padding: '0.875rem 1rem', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.75rem', 
-                cursor: track.isCompleted ? 'default' : 'pointer',
-                opacity: goal.completed ? 0.6 : 1,
-                backgroundColor: goal.completed ? 'var(--bg-primary)' : 'var(--bg-secondary)',
+                padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', 
+                opacity: goal.completed ? 0.6 : 1, backgroundColor: goal.completed ? 'var(--bg-primary)' : 'var(--bg-secondary)',
                 borderStyle: goal.completed ? 'dashed' : 'solid'
               }}
-              whileTap={track.isCompleted ? {} : { scale: 0.99 }}
-              onClick={() => !track.isCompleted && handleToggleGoal(goal.id)}
             >
-              <motion.div 
+              <div 
+                onClick={() => !track.isCompleted && handleToggleGoal(goal.id)}
                 style={{
-                  width: '22px', height: '22px', 
-                  borderRadius: '50%',
+                  width: '22px', height: '22px', borderRadius: '50%',
                   border: `2px solid ${goal.completed ? track.color : 'var(--border-color)'}`,
                   backgroundColor: goal.completed ? track.color : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0
+                  flexShrink: 0, cursor: track.isCompleted ? 'default' : 'pointer'
                 }}
-                animate={goal.completed ? { scale: [1, 1.15, 1] } : { scale: 1 }}
-                transition={{ duration: 0.2 }}
               >
                 {goal.completed && <Check size={12} color="white" strokeWidth={3} />}
-              </motion.div>
+              </div>
               
-              <span style={{ 
-                flex: 1, 
-                fontWeight: 700, 
-                fontSize: '0.95rem',
-                textDecoration: goal.completed ? 'line-through' : 'none',
-                transition: 'all 0.3s ease',
-                color: 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                flexWrap: 'wrap'
-              }}>
+              <span 
+                onClick={() => openLogModalFor(goal.id, goal.title)}
+                style={{ 
+                  flex: 1, fontWeight: 700, fontSize: '0.95rem',
+                  textDecoration: goal.completed ? 'line-through' : 'none',
+                  color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
+                  cursor: track.isCompleted ? 'default' : 'pointer'
+                }}>
                 {goal.title}
+                {formatTimeBadge(goal.timeSpent)}
                 {goal.subGoals && goal.subGoals.length > 0 && (
-                  <span style={{ 
-                    fontSize: '0.7rem', 
-                    padding: '0.15rem 0.4rem', 
-                    borderRadius: 'var(--radius-sm)', 
-                    backgroundColor: goal.completed ? 'var(--success-color)' : 'var(--bg-primary)',
-                    color: goal.completed ? 'white' : 'var(--text-secondary)',
-                    fontWeight: 800,
-                    textDecoration: 'none'
-                  }}>
+                  <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 'var(--radius-sm)', backgroundColor: goal.completed ? 'var(--success-color)' : 'var(--bg-primary)', color: goal.completed ? 'white' : 'var(--text-secondary)', fontWeight: 800 }}>
                     {goal.completed ? 'Completed' : `${goal.subGoals.filter(sg => sg.completed).length}/${goal.subGoals.length}`}
                   </span>
                 )}
@@ -382,81 +406,142 @@ const TrackDetail = () => {
               {!track.isCompleted && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAddingSubGoalFor(addingSubGoalFor === goal.id ? null : goal.id);
-                    }}
+                    onClick={() => setAddingSubGoalFor(addingSubGoalFor === goal.id ? null : goal.id)}
                     style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === goal.id ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)' }}
                   >
                     <Plus size={16} />
                   </button>
-                  <button 
-                    onClick={(e) => handleDeleteGoal(goal.id, e)}
-                    style={{ color: 'var(--error-color)', padding: '0.25rem' }}
-                  >
+                  <button onClick={(e) => handleDeleteGoal(goal.id, e)} style={{ color: 'var(--error-color)', padding: '0.25rem' }}>
                     <Trash2 size={16} />
                   </button>
                 </div>
               )}
             </motion.div>
 
-            {/* Sub Goals List */}
+            {/* LEVEL 2: Sub Goals */}
             {goal.subGoals && goal.subGoals.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '1.5rem' }}>
                 {goal.subGoals.map((sg) => (
-                  <motion.div 
-                    key={sg.id}
-                    style={{ 
-                      padding: '0.5rem', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.75rem', 
-                      cursor: track.isCompleted ? 'default' : 'pointer',
-                      opacity: sg.completed ? 0.6 : 1,
-                      backgroundColor: sg.completed ? 'transparent' : 'var(--bg-secondary)',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-color)',
-                      borderStyle: sg.completed ? 'dashed' : 'solid'
-                    }}
-                    whileTap={track.isCompleted ? {} : { scale: 0.99 }}
-                    onClick={() => !track.isCompleted && handleToggleSubGoal(goal.id, sg.id)}
-                  >
-                    <CornerDownRight size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                  <div key={sg.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <motion.div 
-                      style={{
-                        width: '18px', height: '18px', 
-                        borderRadius: '4px',
-                        border: `2px solid ${sg.completed ? track.color : 'var(--border-color)'}`,
-                        backgroundColor: sg.completed ? track.color : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0
+                      style={{ 
+                        padding: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', 
+                        opacity: sg.completed ? 0.6 : 1, backgroundColor: sg.completed ? 'transparent' : 'var(--bg-secondary)',
+                        borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', borderStyle: sg.completed ? 'dashed' : 'solid'
                       }}
-                      animate={sg.completed ? { scale: [1, 1.15, 1] } : { scale: 1 }}
-                      transition={{ duration: 0.2 }}
                     >
-                      {sg.completed && <Check size={10} color="white" strokeWidth={3} />}
-                    </motion.div>
-                    
-                    <span style={{ 
-                      flex: 1, 
-                      fontWeight: 600, 
-                      fontSize: '0.875rem',
-                      textDecoration: sg.completed ? 'line-through' : 'none',
-                      transition: 'all 0.3s ease',
-                      color: 'var(--text-primary)'
-                    }}>
-                      {sg.title}
-                    </span>
-
-                    {!track.isCompleted && (
-                      <button 
-                        onClick={(e) => handleDeleteSubGoal(goal.id, sg.id, e)}
-                        style={{ color: 'var(--text-muted)', padding: '0.25rem' }}
+                      <CornerDownRight size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                      <div 
+                        onClick={() => !track.isCompleted && handleToggleSubGoal(goal.id, sg.id)}
+                        style={{
+                          width: '18px', height: '18px', borderRadius: '4px',
+                          border: `2px solid ${sg.completed ? track.color : 'var(--border-color)'}`,
+                          backgroundColor: sg.completed ? track.color : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, cursor: track.isCompleted ? 'default' : 'pointer'
+                        }}
                       >
-                        <Trash2 size={14} />
-                      </button>
+                        {sg.completed && <Check size={10} color="white" strokeWidth={3} />}
+                      </div>
+                      
+                      <span 
+                        onClick={() => openLogModalFor(sg.id, sg.title)}
+                        style={{ 
+                          flex: 1, fontWeight: 600, fontSize: '0.875rem',
+                          textDecoration: sg.completed ? 'line-through' : 'none', color: 'var(--text-primary)',
+                          display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: track.isCompleted ? 'default' : 'pointer'
+                        }}>
+                        {sg.title}
+                        {formatTimeBadge(sg.timeSpent)}
+                      </span>
+
+                      {!track.isCompleted && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button 
+                            onClick={() => setAddingSubGoalFor(addingSubGoalFor === `${goal.id}-${sg.id}` ? null : `${goal.id}-${sg.id}`)}
+                            style={{ color: 'var(--text-muted)', padding: '0.25rem', backgroundColor: addingSubGoalFor === `${goal.id}-${sg.id}` ? 'var(--bg-tertiary)' : 'transparent', borderRadius: 'var(--radius-sm)' }}
+                          >
+                            <Plus size={14} />
+                          </button>
+                          <button onClick={(e) => handleDeleteSubGoal(goal.id, sg.id, e)} style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+
+                    {/* LEVEL 3: Sub-Sub Goals */}
+                    {sg.subGoals && sg.subGoals.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '2rem' }}>
+                        {sg.subGoals.map((ssg) => (
+                          <motion.div 
+                            key={ssg.id}
+                            style={{ 
+                              padding: '0.375rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', 
+                              opacity: ssg.completed ? 0.6 : 1, backgroundColor: 'transparent',
+                              borderRadius: 'var(--radius-md)'
+                            }}
+                          >
+                            <CornerDownRight size={12} color="var(--border-color)" style={{ flexShrink: 0 }} />
+                            <div 
+                              onClick={() => !track.isCompleted && handleToggleSubSubGoal(goal.id, sg.id, ssg.id)}
+                              style={{
+                                width: '16px', height: '16px', borderRadius: '4px',
+                                border: `2px solid ${ssg.completed ? track.color : 'var(--border-color)'}`,
+                                backgroundColor: ssg.completed ? track.color : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0, cursor: track.isCompleted ? 'default' : 'pointer'
+                              }}
+                            >
+                              {ssg.completed && <Check size={10} color="white" strokeWidth={3} />}
+                            </div>
+                            
+                            <span 
+                              onClick={() => openLogModalFor(ssg.id, ssg.title)}
+                              style={{ 
+                                flex: 1, fontWeight: 500, fontSize: '0.8125rem',
+                                textDecoration: ssg.completed ? 'line-through' : 'none', color: 'var(--text-secondary)',
+                                display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: track.isCompleted ? 'default' : 'pointer'
+                              }}>
+                              {ssg.title}
+                              {formatTimeBadge(ssg.timeSpent)}
+                            </span>
+
+                            {!track.isCompleted && (
+                              <button onClick={(e) => handleDeleteSubSubGoal(goal.id, sg.id, ssg.id, e)} style={{ color: 'var(--text-muted)', padding: '0.25rem' }}>
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </motion.div>
+                        ))}
+                      </div>
                     )}
-                  </motion.div>
+
+                    {/* Add Sub-Sub Goal Form */}
+                    {addingSubGoalFor === `${goal.id}-${sg.id}` && !track.isCompleted && (
+                      <form onSubmit={(e) => handleAddSubSubGoal(goal.id, sg.id, e)} style={{ display: 'flex', gap: '0.5rem', paddingLeft: '2rem', marginTop: '0.25rem' }}>
+                        <input 
+                          type="text" value={newSubGoalTitle} onChange={(e) => setNewSubGoalTitle(e.target.value)}
+                          placeholder="Add deeper goal..." autoFocus
+                          style={{
+                            flex: 1, padding: '0.375rem 0.5rem', borderRadius: 'var(--radius-sm)',
+                            border: '1px dashed var(--border-color)', backgroundColor: 'transparent',
+                            color: 'var(--text-primary)', outline: 'none', fontSize: '0.8125rem'
+                          }}
+                        />
+                        <button 
+                          type="submit" disabled={!newSubGoalTitle.trim()}
+                          style={{
+                            backgroundColor: newSubGoalTitle.trim() ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+                            color: newSubGoalTitle.trim() ? 'white' : 'var(--text-muted)',
+                            padding: '0 0.75rem', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: '0.75rem'
+                          }}
+                        >
+                          Add
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -465,11 +550,8 @@ const TrackDetail = () => {
             {addingSubGoalFor === goal.id && !track.isCompleted && (
               <form onSubmit={(e) => handleAddSubGoal(goal.id, e)} style={{ display: 'flex', gap: '0.5rem', paddingLeft: '1.5rem', marginTop: '0.25rem' }}>
                 <input 
-                  type="text" 
-                  value={newSubGoalTitle}
-                  onChange={(e) => setNewSubGoalTitle(e.target.value)}
-                  placeholder="Add sub-goal..."
-                  autoFocus
+                  type="text" value={newSubGoalTitle} onChange={(e) => setNewSubGoalTitle(e.target.value)}
+                  placeholder="Add sub-goal..." autoFocus
                   style={{
                     flex: 1, padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)',
                     border: '1px dashed var(--border-color)', backgroundColor: 'var(--bg-primary)',
@@ -477,14 +559,11 @@ const TrackDetail = () => {
                   }}
                 />
                 <button 
-                  type="submit" 
-                  disabled={!newSubGoalTitle.trim()}
+                  type="submit" disabled={!newSubGoalTitle.trim()}
                   style={{
                     backgroundColor: newSubGoalTitle.trim() ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
                     color: newSubGoalTitle.trim() ? 'white' : 'var(--text-muted)',
-                    padding: '0 1rem', borderRadius: 'var(--radius-sm)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 700, fontSize: '0.875rem'
+                    padding: '0 1rem', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: '0.875rem'
                   }}
                 >
                   Add
@@ -501,60 +580,27 @@ const TrackDetail = () => {
         )}
       </div>
 
-      {!track.isCompleted && (
-        <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center' }}>
-          <button className="btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.125rem' }} onClick={() => setIsModalOpen(true)}>
-            <Play size={20} fill="currentColor" /> Log Session
-          </button>
-        </div>
-      )}
-
-      {/* Modals */}
       <SessionLogModal 
         isOpen={isModalOpen} 
         onClose={() => {
           setIsModalOpen(false);
-          loadTrack(); // reload stats if leveling up
+          setActiveLogGoal(null);
+          loadTrack(); // reload stats and timeSpent
         }} 
-        tracks={[track]} 
+        trackId={track.id}
+        selectedGoal={activeLogGoal}
       />
 
-      <EditTrackModal
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        track={track}
-        onUpdate={(updated) => setTrack(updated)}
-      />
+      <EditTrackModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} track={track} onUpdate={(updated) => setTrack(updated)} />
 
-      {/* Confirmation Modal */}
       {showConfirmDelete && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem'
-        }}>
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="card"
-            style={{ width: '100%', maxWidth: '320px', textAlign: 'center', padding: '1.5rem' }}
-          >
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card" style={{ width: '100%', maxWidth: '320px', textAlign: 'center', padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>Delete Track?</h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Are you sure you want to delete "{track.name}" and all its goals?
-            </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Are you sure you want to delete "{track.name}" and all its goals?</p>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button 
-                onClick={() => setShowConfirmDelete(false)}
-                style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)', fontWeight: 700 }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleDeleteTrack}
-                style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--error-color)', color: 'white', fontWeight: 700 }}
-              >
-                Delete
-              </button>
+              <button onClick={() => setShowConfirmDelete(false)} style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)', fontWeight: 700 }}>Cancel</button>
+              <button onClick={handleDeleteTrack} style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--error-color)', color: 'white', fontWeight: 700 }}>Delete</button>
             </div>
           </motion.div>
         </div>

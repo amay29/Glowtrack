@@ -79,6 +79,30 @@ export const restoreTrack = (id) => {
 // Sessions
 export const getSessions = () => getItem(KEYS.SESSIONS, []);
 export const saveSessions = (sessions) => setItem(KEYS.SESSIONS, sessions);
+
+const recursivelyUpdateGoalTime = (goals, targetGoalId, addedMinutes) => {
+  let found = false;
+  const newGoals = goals.map(g => {
+    if (g.id === targetGoalId) {
+      found = true;
+      return { ...g, timeSpent: (g.timeSpent || 0) + addedMinutes };
+    }
+    
+    if (g.subGoals && g.subGoals.length > 0) {
+      const { updatedGoals, wasFound } = recursivelyUpdateGoalTime(g.subGoals, targetGoalId, addedMinutes);
+      if (wasFound) {
+        found = true;
+        // If a child was updated, accumulate time to parent too
+        return { ...g, subGoals: updatedGoals, timeSpent: (g.timeSpent || 0) + addedMinutes };
+      }
+    }
+    
+    return g;
+  });
+  
+  return { updatedGoals: newGoals, wasFound: found };
+};
+
 export const addSession = (session) => {
   const sessions = getSessions();
   const newSession = {
@@ -86,10 +110,26 @@ export const addSession = (session) => {
     date: new Date().toISOString(),
     durationMinutes: session.durationMinutes || 0,
     trackId: session.trackId,
+    goalId: session.goalId || null,
     note: session.note || '',
     ...session
   };
   saveSessions([...sessions, newSession]);
+  
+  // Update timeSpent in tracks if goalId exists
+  if (session.goalId && session.trackId) {
+    const tracks = getTracks();
+    const trackIndex = tracks.findIndex(t => t.id === session.trackId);
+    if (trackIndex !== -1) {
+      const track = tracks[trackIndex];
+      const { updatedGoals, wasFound } = recursivelyUpdateGoalTime(track.goals || [], session.goalId, newSession.durationMinutes);
+      if (wasFound) {
+        const newTracks = [...tracks];
+        newTracks[trackIndex] = { ...track, goals: updatedGoals };
+        saveTracks(newTracks);
+      }
+    }
+  }
   
   // Update stats
   updateStreak();

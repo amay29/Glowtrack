@@ -1,57 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Square, Check, Flame } from 'lucide-react';
+import { X, Play, Square, Check, Flame, Clock } from 'lucide-react';
 import { addSession } from '../lib/storage';
 
-const SessionLogModal = ({ isOpen, onClose, tracks }) => {
-  const [mode, setMode] = useState('timer'); // 'timer' or 'manual'
-  const [selectedTrack, setSelectedTrack] = useState('');
-  const [manualMinutes, setManualMinutes] = useState(30);
-  
+const SessionLogModal = ({ isOpen, onClose, trackId, selectedGoal }) => {
+  // mode: 'stopwatch' | 'timer' | 'manual'
+  const [mode, setMode] = useState('stopwatch'); 
+  const [seconds, setSeconds] = useState(0); // For stopwatch
+  const [timerSeconds, setTimerSeconds] = useState(25 * 60); // Default 25 mins
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [seconds, setSeconds] = useState(0);
-  
+  const [manualMinutes, setManualMinutes] = useState(25);
   const [showCelebration, setShowCelebration] = useState(false);
 
+  // Timer/Stopwatch loop
   useEffect(() => {
     let interval;
     if (isTimerRunning) {
       interval = setInterval(() => {
-        setSeconds(s => s + 1);
+        if (mode === 'stopwatch') {
+          setSeconds(s => s + 1);
+        } else if (mode === 'timer') {
+          setTimerSeconds(s => {
+            if (s <= 1) {
+              clearInterval(interval);
+              setIsTimerRunning(false);
+              handleFinish(true); // auto finish
+              return 0;
+            }
+            return s - 1;
+          });
+        }
       }, 1000);
-    } else if (!isTimerRunning && seconds !== 0) {
-      clearInterval(interval);
     }
     return () => clearInterval(interval);
-  }, [isTimerRunning, seconds]);
+  }, [isTimerRunning, mode]);
 
   useEffect(() => {
     if (isOpen) {
-      // Reset state on open
-      setShowCelebration(false);
       setSeconds(0);
+      setTimerSeconds(25 * 60);
       setIsTimerRunning(false);
-      setMode('timer');
-      if (tracks && tracks.length > 0) {
-        setSelectedTrack(tracks[0].id);
-      }
+      setShowCelebration(false);
+      setMode('stopwatch');
     }
-  }, [isOpen, tracks]);
+  }, [isOpen]);
 
-  const handleFinish = () => {
+  const handleFinish = (autoComplete = false) => {
     if (isTimerRunning) setIsTimerRunning(false);
     
     let duration = 0;
-    if (mode === 'timer') {
+    if (mode === 'stopwatch') {
       duration = Math.round(seconds / 60);
-      if (duration === 0 && seconds > 0) duration = 1; // At least 1 min if they tried
+      if (duration === 0 && seconds > 10) duration = 1; // Round up if at least 10s
+    } else if (mode === 'timer') {
+      // Calculate how much time passed vs original target. Actually, just record what they did or if completed.
+      // Wait, if autoComplete, duration = initial target. But we don't store initial target easily.
+      // For simplicity, let's just record the elapsed time for timer:
+      // (25 * 60 - timerSeconds) / 60
+      const elapsedMins = Math.round((25 * 60 - timerSeconds) / 60);
+      duration = elapsedMins > 0 ? elapsedMins : (autoComplete ? 25 : 0);
     } else {
       duration = manualMinutes;
     }
 
-    if (duration > 0 && selectedTrack) {
+    if (duration > 0 && trackId) {
       addSession({
-        trackId: selectedTrack,
+        trackId: trackId,
+        goalId: selectedGoal?.id || null,
         durationMinutes: duration,
       });
       
@@ -125,31 +140,29 @@ const SessionLogModal = ({ isOpen, onClose, tracks }) => {
                   <Flame size={40} fill="currentColor" />
                 </motion.div>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Great Job!</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>You're getting closer to your goals.</p>
+                <p style={{ color: 'var(--text-secondary)' }}>You've made solid progress.</p>
               </motion.div>
             ) : (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Log Session</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Clock size={20} color="var(--accent-primary)" /> Log Session
+                    </h2>
+                    {selectedGoal && (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem', fontWeight: 600 }}>
+                        Target: {selectedGoal.title}
+                      </p>
+                    )}
+                  </div>
                   <button onClick={onClose} style={{ color: 'var(--text-muted)' }}><X size={24} /></button>
                 </div>
 
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.875rem' }}>Select Track</label>
-                  <select 
-                    value={selectedTrack}
-                    onChange={(e) => setSelectedTrack(e.target.value)}
-                    style={{
-                      width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
-                      color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', fontSize: '1rem'
-                    }}
-                  >
-                    {tracks.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', backgroundColor: 'var(--bg-primary)', padding: '0.25rem', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', backgroundColor: 'var(--bg-primary)', padding: '0.25rem', borderRadius: 'var(--radius-md)' }}>
+                  <button 
+                    onClick={() => setMode('stopwatch')}
+                    style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-sm)', fontWeight: 600, backgroundColor: mode === 'stopwatch' ? 'var(--bg-secondary)' : 'transparent', color: mode === 'stopwatch' ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: mode === 'stopwatch' ? 'var(--shadow-sm)' : 'none', transition: 'var(--transition-smooth)' }}
+                  >Stopwatch</button>
                   <button 
                     onClick={() => setMode('timer')}
                     style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-sm)', fontWeight: 600, backgroundColor: mode === 'timer' ? 'var(--bg-secondary)' : 'transparent', color: mode === 'timer' ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: mode === 'timer' ? 'var(--shadow-sm)' : 'none', transition: 'var(--transition-smooth)' }}
@@ -160,18 +173,29 @@ const SessionLogModal = ({ isOpen, onClose, tracks }) => {
                   >Manual</button>
                 </div>
 
-                {mode === 'timer' ? (
+                {mode === 'stopwatch' || mode === 'timer' ? (
                   <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <div style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'monospace' }}>
-                      {formatTime(seconds)}
+                    {mode === 'timer' && !isTimerRunning && timerSeconds === 25 * 60 && (
+                      <div style={{ marginBottom: '1rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Set Mins:</span>
+                        <input 
+                          type="number" 
+                          value={Math.round(timerSeconds / 60)} 
+                          onChange={(e) => setTimerSeconds((parseInt(e.target.value) || 0) * 60)}
+                          style={{ width: '60px', padding: '0.25rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                        />
+                      </div>
+                    )}
+                    <div style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'monospace', letterSpacing: '-0.05em' }}>
+                      {mode === 'stopwatch' ? formatTime(seconds) : formatTime(timerSeconds)}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem' }}>
                       {!isTimerRunning ? (
-                        <button onClick={() => setIsTimerRunning(true)} className="btn-primary" style={{ width: '60px', height: '60px', padding: 0 }}>
-                          <Play fill="currentColor" size={24} style={{ marginLeft: '4px' }} />
+                        <button onClick={() => setIsTimerRunning(true)} className="btn-primary" style={{ width: '64px', height: '64px', borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Play fill="currentColor" size={28} style={{ marginLeft: '4px' }} />
                         </button>
                       ) : (
-                        <button onClick={() => setIsTimerRunning(false)} className="btn-primary" style={{ width: '60px', height: '60px', padding: 0, backgroundColor: 'var(--warning-color)' }}>
+                        <button onClick={() => setIsTimerRunning(false)} className="btn-primary" style={{ width: '64px', height: '64px', borderRadius: '50%', padding: 0, backgroundColor: 'var(--warning-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Square fill="currentColor" size={24} />
                         </button>
                       )}
@@ -186,21 +210,20 @@ const SessionLogModal = ({ isOpen, onClose, tracks }) => {
                       onChange={(e) => setManualMinutes(parseInt(e.target.value) || 0)}
                       min="1"
                       style={{
-                        width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)',
+                        width: '100%', padding: '1rem', borderRadius: 'var(--radius-md)',
                         border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)',
-                        color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', fontSize: '1rem'
+                        color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', fontSize: '1.25rem', textAlign: 'center', fontWeight: 700
                       }}
                     />
                   </div>
                 )}
 
                 <button 
-                  onClick={handleFinish} 
+                  onClick={() => handleFinish(false)} 
                   className="btn-primary" 
-                  style={{ width: '100%', padding: '1rem', backgroundColor: (mode === 'timer' && seconds === 0) ? 'var(--bg-tertiary)' : 'var(--success-color)' }}
-                  disabled={mode === 'timer' && seconds === 0}
+                  style={{ width: '100%', padding: '1rem', backgroundColor: ((mode === 'stopwatch' && seconds < 10) || (mode === 'timer' && timerSeconds === 25*60 && !isTimerRunning)) ? 'var(--bg-tertiary)' : 'var(--success-color)' }}
                 >
-                  <Check size={20} /> Finish Session
+                  <Check size={20} /> Finish & Save
                 </button>
               </>
             )}
