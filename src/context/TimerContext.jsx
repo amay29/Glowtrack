@@ -10,6 +10,7 @@ export const TimerProvider = ({ children }) => {
   const [mode, setMode] = useState('stopwatch'); // 'stopwatch' | 'timer' | 'manual'
   const [seconds, setSeconds] = useState(0);
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
+  const [initialTimerSeconds, setInitialTimerSeconds] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [activeTrackId, setActiveTrackId] = useState(null);
   const [activeGoal, setActiveGoal] = useState(null); // { id, title }
@@ -46,6 +47,7 @@ export const TimerProvider = ({ children }) => {
       setMode('stopwatch');
       setSeconds(0);
       setTimerSeconds(25 * 60);
+      setInitialTimerSeconds(25 * 60);
     }
   };
 
@@ -61,8 +63,8 @@ export const TimerProvider = ({ children }) => {
       duration = Math.round(seconds / 60);
       if (duration === 0 && seconds > 10) duration = 1;
     } else if (mode === 'timer') {
-      const elapsedMins = Math.round((25 * 60 - timerSeconds) / 60);
-      duration = elapsedMins > 0 ? elapsedMins : (autoComplete ? 25 : 0);
+      const elapsedMins = Math.round((initialTimerSeconds - timerSeconds) / 60);
+      duration = elapsedMins > 0 ? elapsedMins : (autoComplete ? Math.round(initialTimerSeconds / 60) : 0);
     } else {
       duration = manualMins;
     }
@@ -77,6 +79,7 @@ export const TimerProvider = ({ children }) => {
       // Reset values
       setSeconds(0);
       setTimerSeconds(25 * 60);
+      setInitialTimerSeconds(25 * 60);
       setActiveTrackId(null);
       setActiveGoal(null);
 
@@ -89,6 +92,7 @@ export const TimerProvider = ({ children }) => {
       // Just clear
       setSeconds(0);
       setTimerSeconds(25 * 60);
+      setInitialTimerSeconds(25 * 60);
       setActiveTrackId(null);
       setActiveGoal(null);
     }
@@ -100,6 +104,7 @@ export const TimerProvider = ({ children }) => {
       mode, setMode,
       seconds, setSeconds,
       timerSeconds, setTimerSeconds,
+      initialTimerSeconds, setInitialTimerSeconds,
       isTimerRunning, setIsTimerRunning,
       activeTrackId, activeGoal,
       isModalOpen, openTimerModal, closeTimerModal,

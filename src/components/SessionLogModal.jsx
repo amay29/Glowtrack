@@ -8,6 +8,7 @@ const SessionLogModal = () => {
     mode, setMode,
     seconds,
     timerSeconds, setTimerSeconds,
+    initialTimerSeconds, setInitialTimerSeconds,
     isTimerRunning, setIsTimerRunning,
     activeGoal,
     isModalOpen, closeTimerModal,
@@ -131,7 +132,9 @@ const SessionLogModal = () => {
                               const h = parseInt(e.target.value) || 0;
                               const m = Math.floor((timerSeconds % 3600) / 60);
                               const s = timerSeconds % 60;
-                              setTimerSeconds(h * 3600 + m * 60 + s);
+                              const total = h * 3600 + m * 60 + s;
+                              setTimerSeconds(total);
+                              setInitialTimerSeconds(total);
                             }}
                             style={{ width: '50px', padding: '0.25rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                           />
@@ -148,7 +151,9 @@ const SessionLogModal = () => {
                               const h = Math.floor(timerSeconds / 3600);
                               const m = parseInt(e.target.value) || 0;
                               const s = timerSeconds % 60;
-                              setTimerSeconds(h * 3600 + m * 60 + s);
+                              const total = h * 3600 + m * 60 + s;
+                              setTimerSeconds(total);
+                              setInitialTimerSeconds(total);
                             }}
                             style={{ width: '50px', padding: '0.25rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                           />
@@ -165,7 +170,9 @@ const SessionLogModal = () => {
                               const h = Math.floor(timerSeconds / 3600);
                               const m = Math.floor((timerSeconds % 3600) / 60);
                               const s = parseInt(e.target.value) || 0;
-                              setTimerSeconds(h * 3600 + m * 60 + s);
+                              const total = h * 3600 + m * 60 + s;
+                              setTimerSeconds(total);
+                              setInitialTimerSeconds(total);
                             }}
                             style={{ width: '50px', padding: '0.25rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                           />
