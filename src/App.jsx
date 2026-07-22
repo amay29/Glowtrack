@@ -39,17 +39,43 @@ function App() {
           
           // If deadline is within the next 24 hours (and not in the past)
           if (timeDiff > 0 && timeDiff <= ONE_DAY_MS) {
-            new Notification(`Glowtrack Reminder`, {
-              body: `Your goal "${goal.title}" in ${trackName} is due in less than 24 hours!`,
-              icon: '/icon-192x192.png'
-            });
+            try {
+              if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(reg => {
+                  reg.showNotification(`Glowtrack Reminder`, {
+                    body: `Your goal "${goal.title}" in ${trackName} is due in less than 24 hours!`,
+                    icon: '/icon-192x192.png'
+                  }).catch(() => {});
+                });
+              } else {
+                new Notification(`Glowtrack Reminder`, {
+                  body: `Your goal "${goal.title}" in ${trackName} is due in less than 24 hours!`,
+                  icon: '/icon-192x192.png'
+                });
+              }
+            } catch (e) {
+              console.log('Notification error:', e);
+            }
             addNotifiedGoal(goal.id);
           } else if (timeDiff < 0 && timeDiff > -ONE_DAY_MS) {
              // "Rapel" notification: if it became overdue recently and we missed the 24h window
-            new Notification(`Glowtrack Overdue`, {
-              body: `Your goal "${goal.title}" in ${trackName} is overdue!`,
-              icon: '/icon-192x192.png'
-            });
+            try {
+              if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(reg => {
+                  reg.showNotification(`Glowtrack Overdue`, {
+                    body: `Your goal "${goal.title}" in ${trackName} is overdue!`,
+                    icon: '/icon-192x192.png'
+                  }).catch(() => {});
+                });
+              } else {
+                new Notification(`Glowtrack Overdue`, {
+                  body: `Your goal "${goal.title}" in ${trackName} is overdue!`,
+                  icon: '/icon-192x192.png'
+                });
+              }
+            } catch (e) {
+              console.log('Notification error:', e);
+            }
             addNotifiedGoal(goal.id);
           }
         }

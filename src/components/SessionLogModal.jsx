@@ -17,8 +17,10 @@ const SessionLogModal = () => {
   const [manualMinutes, setManualMinutes] = useState(25);
 
   const formatTime = (totalSeconds) => {
-    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
     const s = (totalSeconds % 60).toString().padStart(2, '0');
+    if (h > 0) return `${h}:${m}:${s}`;
     return `${m}:${s}`;
   };
 
@@ -118,15 +120,57 @@ const SessionLogModal = () => {
 
                 {mode === 'stopwatch' || mode === 'timer' ? (
                   <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    {mode === 'timer' && !isTimerRunning && timerSeconds === 25 * 60 && (
-                      <div style={{ marginBottom: '1rem' }}>
-                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Set Mins:</span>
-                        <input 
-                          type="number" 
-                          value={Math.round(timerSeconds / 60)} 
-                          onChange={(e) => setTimerSeconds((parseInt(e.target.value) || 0) * 60)}
-                          style={{ width: '60px', padding: '0.25rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                        />
+                    {mode === 'timer' && !isTimerRunning && (
+                      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <input 
+                            type="number" 
+                            min="0"
+                            value={Math.floor(timerSeconds / 3600)} 
+                            onChange={(e) => {
+                              const h = parseInt(e.target.value) || 0;
+                              const m = Math.floor((timerSeconds % 3600) / 60);
+                              const s = timerSeconds % 60;
+                              setTimerSeconds(h * 3600 + m * 60 + s);
+                            }}
+                            style={{ width: '50px', padding: '0.25rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                          />
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Jam</span>
+                        </div>
+                        <span>:</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="59"
+                            value={Math.floor((timerSeconds % 3600) / 60)} 
+                            onChange={(e) => {
+                              const h = Math.floor(timerSeconds / 3600);
+                              const m = parseInt(e.target.value) || 0;
+                              const s = timerSeconds % 60;
+                              setTimerSeconds(h * 3600 + m * 60 + s);
+                            }}
+                            style={{ width: '50px', padding: '0.25rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                          />
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Menit</span>
+                        </div>
+                        <span>:</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <input 
+                            type="number"
+                            min="0"
+                            max="59" 
+                            value={timerSeconds % 60} 
+                            onChange={(e) => {
+                              const h = Math.floor(timerSeconds / 3600);
+                              const m = Math.floor((timerSeconds % 3600) / 60);
+                              const s = parseInt(e.target.value) || 0;
+                              setTimerSeconds(h * 3600 + m * 60 + s);
+                            }}
+                            style={{ width: '50px', padding: '0.25rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                          />
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Detik</span>
+                        </div>
                       </div>
                     )}
                     <div style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'monospace', letterSpacing: '-0.05em' }}>
@@ -164,7 +208,7 @@ const SessionLogModal = () => {
                 <button 
                   onClick={onFinishClick} 
                   className="btn-primary" 
-                  style={{ width: '100%', padding: '1rem', backgroundColor: ((mode === 'stopwatch' && seconds < 10) || (mode === 'timer' && timerSeconds === 25*60 && !isTimerRunning)) ? 'var(--bg-tertiary)' : 'var(--success-color)' }}
+                  style={{ width: '100%', padding: '1rem', backgroundColor: ((mode === 'stopwatch' && seconds < 10) || (mode === 'timer' && timerSeconds === 0 && !isTimerRunning)) ? 'var(--bg-tertiary)' : 'var(--success-color)' }}
                 >
                   <Check size={20} /> Finish & Save
                 </button>

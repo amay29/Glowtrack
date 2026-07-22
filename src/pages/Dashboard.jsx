@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Play, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 import { getSessions, getTracks } from '../lib/storage';
-import { useTimer } from '../context/TimerContext';
 import ThemeToggle from '../components/ThemeToggle';
 import ProfileModal from '../components/ProfileModal';
 
@@ -11,7 +10,6 @@ const Dashboard = () => {
   const [thisWeekMins, setThisWeekMins] = useState(0);
   const [dueGoals, setDueGoals] = useState([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { openTimerModal } = useTimer();
 
   useEffect(() => {
     loadData();
